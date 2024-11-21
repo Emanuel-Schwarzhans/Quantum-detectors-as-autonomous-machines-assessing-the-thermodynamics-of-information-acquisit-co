@@ -26,7 +26,7 @@ def get_dynamics(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l,t_f,t_s
     steady_prev_run=steadystate(H,c_ops)
     psi0 = tensor(ptrace(steady_prev_run,0),ptrace(steady_prev_run,1),ptrace(steady_prev_run,2),matrix_element(1,1,2))
     times = np.linspace(0., t_f, t_steps)
-    return([mesolve(H,psi0, tlist=times,c_ops=c_ops, e_ops=e_ops),steady_prev_run,e_ops,c_ops,t_f,t_steps,rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,d_l])
+    return([mesolve(H,psi0, tlist=times,c_ops=c_ops, e_ops=e_ops),steady_prev_run,e_ops,c_ops,t_f,t_steps,rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l])
 
 def efficiency(result):
     steady_prev_run=result[1]
@@ -76,4 +76,11 @@ def get_all_figures_of_merit(result): #returns list of [efficiency, dark count r
     jitt=jitter(result)
     ent=entropy_production(result,result[10])
 
-    return([effic,darc,jitt,ent])
+    return([effic,darc,jitt,ent,result])
+
+def get_virtual_temp(result):
+    E_C=result[14]
+    E_H=result[13]+result[14]
+    T_C=result[10]
+    T_H=result[9]
+    return((E_H-E_C)/(E_H/T_H-E_C/T_C))
