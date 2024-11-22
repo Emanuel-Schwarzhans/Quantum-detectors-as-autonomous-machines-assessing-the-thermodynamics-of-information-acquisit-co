@@ -78,9 +78,37 @@ def get_all_figures_of_merit(result): #returns list of [efficiency, dark count r
 
     return([effic,darc,jitt,ent,result[4],result[5],result[6],result[7],result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],result[16],result[17],result[18]])
 
-def get_virtual_temp(result):
-    E_C=result[14]
-    E_H=result[13]+result[14]
-    T_C=result[10]
-    T_H=result[9]
-    return((E_H-E_C)/(E_H/T_H-E_C/T_C))
+def out_index(el_str): #Outputs a dictionary relating entries of get_all_figures_of_merit to its indices
+    list=["efficiency",
+         "dark count rate",
+         "jitter",
+         "entropy production",
+         "t_f",
+         "t_steps",
+         "rateM",
+         "rateB",
+         "rateD",
+         "TH",
+         "TC",
+         "Tb",
+         "Td",
+         "e_s",
+         "e_C",
+         "e_l",
+         "g_sl",
+         "g_ml",
+         "d_l"
+    ]
+    return(list.index(el_str))
+
+def get_virtual_temp(TH,TC,e_L,e_C):
+    e_H=e_L+e_C
+    return((e_H-e_C)/(e_H/TH-e_C/TC))
+
+#Input is the output of get_all_figures_of_merit
+#output is a list with the same structure but without the elements that have non-negative virtual temperature
+def neg_virt_temp_filter(datalist):
+    filtered_list = [[inner for inner in outer
+                      if get_virtual_temp(inner[out_index("TH")],inner[out_index("TC")],inner[out_index("e_s")],inner[out_index("e_C")])<0]
+                      for outer in datalist]
+    return(filtered_list)
