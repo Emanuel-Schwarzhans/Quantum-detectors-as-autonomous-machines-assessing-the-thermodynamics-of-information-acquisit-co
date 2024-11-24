@@ -103,7 +103,7 @@ def out_index(el_str): #Outputs a dictionary relating entries of get_all_figures
 
 def get_virtual_temp(TH,TC,e_L,e_C):
     e_H=e_L+e_C
-    return((e_H-e_C)/(e_H/TH-e_C/TC))
+    return(e_L/(e_H/TH-e_C/TC))
 
 #Input is the output of get_all_figures_of_merit
 #output is a list with the same structure but without the elements that have non-negative virtual temperature
