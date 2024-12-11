@@ -8,7 +8,7 @@ from Hamiltonians import *
 def get_dynamics(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l,t_f,t_steps):
     # Total Hamiltonian
     e_H=e_s+e_C
-    H=H0_full(e_s,e_l,e_C,e_H,d_l)+HI_full(g_sl,g_ml,d_l)
+    H=H0_full(e_s,e_l,e_c,d_l)+HI_full(g_sl,g_ml,d_l)
 
     # Jump operators
     c_ops=c_ops_full(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,d_l)
@@ -28,6 +28,55 @@ def get_dynamics(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l,t_f,t_s
     times = np.linspace(0., t_f, t_steps)
     return([mesolve(H,psi0, tlist=times,c_ops=c_ops, e_ops=e_ops),steady_prev_run,e_ops,c_ops,t_f,t_steps,rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l])
 
+def get_dynamics_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l,t_f,t_steps,k):
+    # Total Hamiltonian
+    e_H=e_s+e_C
+    H=H0_k(e_s,e_l,e_C,d_l,k)+HI_k(g_sl,g_ml,d_l,k)
+
+    # Jump operators
+    c_ops=c_ops_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,d_l,k)
+
+    # Observable operators
+    e_current_waste=Qobj(np.sum([-(c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[2][l+1]
+                                   -c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[2][l])*c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[0][l].dag()*c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[0][l]
+                                   +(c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[2][l+1]
+                                     -c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[2][l])*c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[1][l].dag()*c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[1][l]
+                                     for l in range(d_l-1)]))
+    # e_current_top=c_ops[7]-c_ops[6]
+    e_current=(e_l*(d_l-2)+e_s)*(c_ops[7].dag()*c_ops[7]-c_ops[6].dag()*c_ops[6])
+    e_machine_heat_dissip =e_C*(c_ops[1].dag()*c_ops[1]-c_ops[0].dag()*c_ops[0])
+    e_machine_heat_draw =e_H*(-c_ops[3].dag()*c_ops[3]+c_ops[2].dag()*c_ops[2])
+    e_ready=tensor(identity(2),identity(2),matrix_element(0,0,d_l),identity(2))
+    e_ops=[e_current,e_ready,e_machine_heat_dissip,e_machine_heat_draw,e_current_waste]
+
+    steady_prev_run=steadystate(H,c_ops)
+    psi0 = tensor(ptrace(steady_prev_run,0),ptrace(steady_prev_run,1),ptrace(steady_prev_run,2),matrix_element(1,1,2))
+    times = np.linspace(0., t_f, t_steps)
+    return([
+        mesolve(H,psi0, tlist=times,c_ops=c_ops, e_ops=e_ops),
+        steady_prev_run,
+        e_ops,
+        c_ops,
+        t_f,
+        t_steps,
+        rateM,
+        rateB,
+        rateD,
+        TH,
+        TC,
+        Tb,
+        Td,
+        e_s,
+        e_C,
+        e_l,
+        g_sl,
+        g_ml,
+        d_l])
+
+
+#######################
+# In the following result should be given as the output of get_dynamics or get_dynamics_k
+#######################
 def efficiency(result):
     steady_prev_run=result[1]
     t_f=result[4]
@@ -68,7 +117,7 @@ def get_parameterlist(result):
     outstring=["mesolve(H,psi0, tlist=times,c_ops=c_ops, e_ops=e_ops)","steady_prev_run","e_ops","c_ops","t_f","t_steps","rateM","rateB","rateD","TH","TC","Tb","Td","e_s","e_C","e_l","d_l"]
     return([[outstring[x],result[x]] for x in range(4,len(result))])
 
-def get_all_figures_of_merit(result): #returns list of [efficiency, dark count rate, jitter, entropy production]
+def get_all_figures_of_merit(result): #returns list of [efficiency, dark count rate, jitter, entropy production,...] input is
     TC=result[10]
 
     effic=efficiency(result)
