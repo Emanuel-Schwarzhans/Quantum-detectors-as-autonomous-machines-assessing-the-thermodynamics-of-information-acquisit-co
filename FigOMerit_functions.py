@@ -150,7 +150,11 @@ def out_index(el_str): #Outputs a dictionary relating entries of get_all_figures
     ]
     return(list.index(el_str))
 
-def get_virtual_temp(TH,TC,e_L,e_C):
+
+def TH_from_TV_TC(TV,TC,e_C,e_L):
+    return((e_L-e_C)/(e_L/TV+e_C/TC))
+
+def TV_from_TH_TC(TH,TC,e_C,e_L):
     e_H=e_L+e_C
     return(e_L/(e_H/TH-e_C/TC))
 
