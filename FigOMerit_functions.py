@@ -3,6 +3,8 @@ from functools import reduce
 from qutip import *
 from Functions import *
 from Hamiltonians import *
+from scipy.stats.qmc import *
+import os
 
 
 def get_dynamics(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l,t_f,t_steps):
@@ -119,13 +121,16 @@ def get_parameterlist(result):
 
 def get_all_figures_of_merit(result): #returns list of [efficiency, dark count rate, jitter, entropy production,...] input is
     TC=result[10]
-
+    TH=result[9]
+    e_C=result[14]
+    e_l=result[15]
+    TV=e_l/((e_l-e_C)/TH-e_C/TC)
     effic=efficiency(result)
     darc=dark_counts(result)
     jitt=jitter(result)
     ent=entropy_production(result,result[10])
 
-    return([effic,darc,jitt,ent,result[4],result[5],result[6],result[7],result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],result[16],result[17],result[18]])
+    return([effic,darc,jitt,ent,result[4],result[5],result[6],result[7],result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],result[16],result[17],result[18],TV])
 
 def out_index(el_str): #Outputs a dictionary relating entries of get_all_figures_of_merit to its indices
     list=["efficiency",
@@ -146,7 +151,8 @@ def out_index(el_str): #Outputs a dictionary relating entries of get_all_figures
          "e_l",
          "g_sl",
          "g_ml",
-         "d_l"
+         "d_l",
+         "TV"
     ]
     return(list.index(el_str))
 
@@ -165,3 +171,111 @@ def neg_virt_temp_filter(datalist):
                       if get_virtual_temp(inner[out_index("TH")],inner[out_index("TC")],inner[out_index("e_s")],inner[out_index("e_C")])<0]
                       for outer in datalist]
     return(filtered_list)
+
+
+def generate_sample_set_d_TC_TV_RB(d_range,R_B_range,T_C_range,T_V_range,e_s,e_C_factor,e_max,sample_size):
+    #Generate samples of variables
+
+    filtered_samples=[]
+
+    while len(filtered_samples) < sample_size:
+        sampler=LatinHypercube(4)
+        samples=np.array(sampler.random(n=50))
+        #scale d and make d integers
+        d_scaled_samples=np.floor(scale(samples,[d_range[0]],[d_range[1]+1])).astype(int)[:,0]
+
+        #scale other variables
+        RB_TH_TC_scaled_samples = scale(samples[:,1:], [R_B_range[0],T_C_range[0],T_V_range[0]],[R_B_range[1],T_C_range[1],T_V_range[1]])
+
+        #re-combine dimension samples with other variable samples
+        scaled_samples=np.column_stack((d_scaled_samples,RB_TH_TC_scaled_samples))
+
+        #implementing sampling constraint for temperature
+        T_C = scaled_samples[:, 2]
+        T_V = scaled_samples[:, 3]
+        d_l=scaled_samples[:,0]
+        e_l=(e_s+e_max)/(d_l-2)
+        e_C=e_C_factor*e_l
+
+        T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
+        valid_samples = scaled_samples[T_H >= 0]
+
+        # Add valid samples to the filtered list
+        filtered_samples.extend(valid_samples)
+        if len(filtered_samples) > sample_size:
+            filtered_samples = filtered_samples[:sample_size]
+    return(filtered_samples)
+
+def generate_sample_set_d_TC_TV(d_range,T_C_range,T_V_range,e_s,e_C_factor,e_max,sample_size):
+    #Generate samples of variables
+    sampler=LatinHypercube(3)
+    filtered_samples=[]
+    samples=np.array(sampler.random(n=50))
+
+    while len(filtered_samples) < sample_size:
+        sampler=LatinHypercube(3)
+        samples=np.array(sampler.random(n=50))
+
+        #scale d and make d integers
+        d_scaled_samples=np.floor(scale(samples,[d_range[0]],[d_range[1]+1])).astype(int)[:,0]
+
+        #scale other variables
+        RB_TH_TC_scaled_samples = scale(samples[:,1:], [T_C_range[0],T_V_range[0]],[T_C_range[1],T_V_range[1]])
+
+        #re-combine dimension samples with other variable samples
+        scaled_samples=np.column_stack((d_scaled_samples,RB_TH_TC_scaled_samples))
+
+        #implementing sampling constraint for temperature
+        T_C = scaled_samples[:, 1]
+        T_V = scaled_samples[:, 2]
+        d_l=scaled_samples[:,0]
+        e_l=(e_s+e_max)/(d_l-2)
+        e_C=e_C_factor*e_l
+
+        T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
+        valid_samples = scaled_samples[T_H >= 0]
+
+        # Add valid samples to the filtered list
+        filtered_samples.extend(valid_samples)
+        if len(filtered_samples) > sample_size:
+            filtered_samples = filtered_samples[:sample_size]
+    return(filtered_samples)
+
+
+def safe_qload(filename):
+    if os.path.exists(filename + '.qu'):
+        return qload(filename)
+    else:
+        return []
+
+def generate_dataset_d_TC_TV(sample_set,filename_save_load,rateM,rateB,rateD,e_s,e_C_factor,e_max,g_sl,g_ml,t_f,t_steps,k):
+    FOM_LHC_sampling=safe_qload(filename_save_load)
+    for sample in sample_set:
+        d_l,TC,TV = sample  # Unpack parameters
+        Tb=TC
+        Td=TC
+        d_l=int(d_l)
+        e_l=(e_max+e_s)/(d_l-2)
+        TH=TH_from_TV_TC(TV,TC,e_l*e_C_factor,e_l)
+        FOM_vals = get_all_figures_of_merit(get_dynamics_k(
+            rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C_factor*e_l,e_l,g_sl,g_ml,d_l,t_f,t_steps,k))  # Evaluate function
+        FOM_LHC_sampling.append(FOM_vals)
+    qsave(FOM_LHC_sampling,filename_save_load)
+    return(FOM_LHC_sampling)
+
+
+def generate_dataset_d_TC_TV_RB(sample_set,filename_save_load,rateM,rateD,e_s,e_C_factor,e_max,g_sl,g_ml,t_f,t_steps,k):
+    FOM_LHC_sampling=safe_qload(filename_save_load)
+
+    for sample in sample_set:
+        d_l,rateB,TC,TV = sample  # Unpack parameters
+        Tb=TC
+        Td=TC
+        d_l=int(d_l)
+        e_l=(e_max+e_s)/(d_l-2)
+        TH=TH_from_TV_TC(TV,TC,e_l*e_C_factor,e_l)
+        FOM_vals = get_all_figures_of_merit(get_dynamics_k(
+            rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C_factor*e_l,e_l,g_sl,g_ml,d_l,t_f,t_steps,k))  # Evaluate function
+        FOM_LHC_sampling.append(FOM_vals)
+    qsave(FOM_LHC_sampling,filename_save_load)
+    return(FOM_LHC_sampling)
