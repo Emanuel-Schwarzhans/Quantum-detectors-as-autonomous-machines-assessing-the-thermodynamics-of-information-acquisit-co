@@ -73,7 +73,8 @@ def get_dynamics_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l,t_f,t
         e_l,
         g_sl,
         g_ml,
-        d_l])
+        d_l,
+        k])
 
 
 #######################
@@ -116,7 +117,7 @@ def jitter(result): # Keep in mind that this is the variance (often FWHM is used
     return(np.array((result[0].expect[0]-noise_floor_curr)).var())
 
 def get_parameterlist(result):
-    outstring=["mesolve(H,psi0, tlist=times,c_ops=c_ops, e_ops=e_ops)","steady_prev_run","e_ops","c_ops","t_f","t_steps","rateM","rateB","rateD","TH","TC","Tb","Td","e_s","e_C","e_l","d_l"]
+    outstring=["mesolve(H,psi0, tlist=times,c_ops=c_ops, e_ops=e_ops)","steady_prev_run","e_ops","c_ops","t_f","t_steps","rateM","rateB","rateD","TH","TC","Tb","Td","e_s","e_C","e_l","d_l","TV","k"]
     return([[outstring[x],result[x]] for x in range(4,len(result))])
 
 def get_all_figures_of_merit(result): #returns list of [efficiency, dark count rate, jitter, entropy production,...] input is
@@ -130,7 +131,7 @@ def get_all_figures_of_merit(result): #returns list of [efficiency, dark count r
     jitt=jitter(result)
     ent=entropy_production(result,result[10])
 
-    return([effic,darc,jitt,ent,result[4],result[5],result[6],result[7],result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],result[16],result[17],result[18],TV])
+    return([effic,darc,jitt,ent,result[4],result[5],result[6],result[7],result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],result[16],result[17],result[18],TV,result[19]])
 
 def out_index(el_str): #Outputs a dictionary relating entries of get_all_figures_of_merit to its indices
     list=["efficiency",
@@ -152,7 +153,8 @@ def out_index(el_str): #Outputs a dictionary relating entries of get_all_figures
          "g_sl",
          "g_ml",
          "d_l",
-         "TV"
+         "TV",
+         "k"
     ]
     return(list.index(el_str))
 
