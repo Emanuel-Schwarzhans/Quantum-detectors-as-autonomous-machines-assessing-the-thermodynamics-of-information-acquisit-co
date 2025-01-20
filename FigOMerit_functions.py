@@ -119,14 +119,15 @@ def get_all_figures_of_merit(result): #returns list of [efficiency, dark count r
     darc=dark_counts(result)
     jitt=jitter(result)
     ent=entropy_production(result)
-
-    return([effic,darc,jitt,ent,result[4],result[5],result[6],result[7],result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],result[16],result[17],result[18],TV,result[19]])
+    ent_rate=entropy_steady_rate(result)
+    return([effic,darc,jitt,ent,ent_rate,result[4],result[5],result[6],result[7],result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],result[16],result[17],result[18],TV,result[19]])
 
 def out_index(el_str): #Outputs a dictionary relating entries of get_all_figures_of_merit to its indices
     list=["efficiency",
          "dark count rate",
          "jitter",
          "entropy production",
+         "entropy rate",
          "t_f",
          "t_steps",
          "rateM",
@@ -152,7 +153,7 @@ def TH_from_TV_TC(TV,TC,e_C,e_L):
     return((e_L-e_C)/(e_L/TV+e_C/TC))
 
 def TV_from_TH_TC(TH,TC,e_C,e_L):
-    e_H=e_L+e_C
+    e_H=e_L-e_C
     return(e_L/(e_H/TH-e_C/TC))
 
 #Input is the output of get_all_figures_of_merit
@@ -165,7 +166,6 @@ def neg_virt_temp_filter(datalist):
 
 
 
-########### STOPPED HERE with revising #######################
 
 def generate_sample_set_d_TC_TV_RB(d_range,R_B_range,T_C_range,T_V_range,e_s,e_C_factor,e_max,sample_size):
     #Generate samples of variables
@@ -273,3 +273,40 @@ def generate_dataset_d_TC_TV_RB(sample_set,filename_save_load,rateM,rateD,e_s,e_
         FOM_LHC_sampling.append(FOM_vals)
     qsave(FOM_LHC_sampling,filename_save_load)
     return(FOM_LHC_sampling)
+
+
+def get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception: e_l can not be used as parameter for change
+    data=[]
+    parameters=param_dict.copy()
+    for param in param_range:
+        parameters[param_str]=param
+        if param_str=="e_s" or param_str=="e_max":
+            parameters["e_l"]=(parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2) ### CHeck if that is erronous
+        if param_str=="TV":
+            parameters["TH"]=TH_from_TV_TC(parameters["TV"],parameters["TC"],parameters["e_C"],
+                                        (parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2))
+        if param_str=="TH" or param_str=="TC":
+            parameters["TV"]=TV_from_TH_TC(parameters["TH"],parameters["TC"],parameters["e_l"]*parameters["e_C_factor"],parameters["e_l"])
+        parameters[param_str]=param
+        if (parameters["TH"] >=0 and parameters["TV"]<=0):
+            data.append(get_all_figures_of_merit(
+            get_dynamics_k(
+                parameters["rateM"],
+                parameters["rateB"],
+                parameters["rateD"],
+                parameters["TH"],
+                parameters["TC"],
+                parameters["Tb"],
+                parameters["Td"],
+                parameters["e_s"],
+                parameters["e_l"]*parameters["e_C_factor"],
+                (parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2),
+                parameters["g_sl"],
+                parameters["g_ml"],
+                parameters["d_l"],
+                parameters["t_f"],
+                parameters["t_steps"],
+                parameters["k"]
+                )
+                ))
+    return(data)
