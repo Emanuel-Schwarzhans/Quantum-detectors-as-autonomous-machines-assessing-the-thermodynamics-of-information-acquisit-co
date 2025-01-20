@@ -188,7 +188,7 @@ def generate_sample_set_d_TC_TV_RB(d_range,R_B_range,T_C_range,T_V_range,e_s,e_C
         T_C = scaled_samples[:, 2]
         T_V = scaled_samples[:, 3]
         d_l=scaled_samples[:,0]
-        e_l=(e_s+e_max)/(d_l-2)
+        e_l=(-e_s+e_max)/(d_l-2)
         e_C=e_C_factor*e_l
 
         T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
@@ -223,7 +223,7 @@ def generate_sample_set_d_TC_TV(d_range,T_C_range,T_V_range,e_s,e_C_factor,e_max
         T_C = scaled_samples[:, 1]
         T_V = scaled_samples[:, 2]
         d_l=scaled_samples[:,0]
-        e_l=(e_s+e_max)/(d_l-2)
+        e_l=(-e_s+e_max)/(d_l-2)
         e_C=e_C_factor*e_l
 
         T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
@@ -249,7 +249,7 @@ def generate_dataset_d_TC_TV(sample_set,filename_save_load,rateM,rateB,rateD,e_s
         Tb=TC
         Td=TC
         d_l=int(d_l)
-        e_l=(e_max+e_s)/(d_l-2)
+        e_l=(e_max-e_s)/(d_l-2)
         TH=TH_from_TV_TC(TV,TC,e_l*e_C_factor,e_l)
         FOM_vals = get_all_figures_of_merit(get_dynamics_k(
             rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C_factor*e_l,e_l,g_sl,g_ml,d_l,t_f,t_steps,k))  # Evaluate function
@@ -266,7 +266,7 @@ def generate_dataset_d_TC_TV_RB(sample_set,filename_save_load,rateM,rateD,e_s,e_
         Tb=TC
         Td=TC
         d_l=int(d_l)
-        e_l=(e_max+e_s)/(d_l-2)
+        e_l=(e_max-e_s)/(d_l-2)
         TH=TH_from_TV_TC(TV,TC,e_l*e_C_factor,e_l)
         FOM_vals = get_all_figures_of_merit(get_dynamics_k(
             rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C_factor*e_l,e_l,g_sl,g_ml,d_l,t_f,t_steps,k))  # Evaluate function
@@ -281,10 +281,10 @@ def get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception: e
     for param in param_range:
         parameters[param_str]=param
         if param_str=="e_s" or param_str=="e_max":
-            parameters["e_l"]=(parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2) ### CHeck if that is erronous
+            parameters["e_l"]=(-parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2) ### CHeck if that is erronous
         if param_str=="TV":
             parameters["TH"]=TH_from_TV_TC(parameters["TV"],parameters["TC"],parameters["e_C"],
-                                        (parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2))
+                                        (-parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2))
         if param_str=="TH" or param_str=="TC":
             parameters["TV"]=TV_from_TH_TC(parameters["TH"],parameters["TC"],parameters["e_l"]*parameters["e_C_factor"],parameters["e_l"])
         parameters[param_str]=param
