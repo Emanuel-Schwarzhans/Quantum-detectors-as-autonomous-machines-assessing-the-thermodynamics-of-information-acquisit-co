@@ -10,7 +10,7 @@ import os
 
 def get_dynamics_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l,t_f,t_steps,k):
     # Total Hamiltonian
-    e_H=e_s+e_C
+
     H=H0_k(e_s,e_l,e_C,d_l,k)+HI_k(g_sl,g_ml,d_l,k)
 
     # Jump operators
@@ -281,7 +281,7 @@ def get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception: e
     for param in param_range:
         parameters[param_str]=param
         if param_str=="e_s" or param_str=="e_max":
-            parameters["e_l"]=(-parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2) ### CHeck if that is erronous
+            parameters["e_l"]=(-parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2)
         if param_str=="TV":
             parameters["TH"]=TH_from_TV_TC(parameters["TV"],parameters["TC"],parameters["e_C"],
                                         (-parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2))
@@ -300,7 +300,7 @@ def get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception: e
                 parameters["Td"],
                 parameters["e_s"],
                 parameters["e_l"]*parameters["e_C_factor"],
-                (parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2),
+                (-parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2),
                 parameters["g_sl"],
                 parameters["g_ml"],
                 parameters["d_l"],
