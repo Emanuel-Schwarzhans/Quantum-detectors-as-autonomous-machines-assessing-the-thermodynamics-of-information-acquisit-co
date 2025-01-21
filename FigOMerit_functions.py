@@ -33,7 +33,7 @@ def get_dynamics_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l,t_f,t
 
 
     steady_prev_run=steadystate(H,c_ops)
-    psi0 = tensor(ptrace(steady_prev_run,0),ptrace(steady_prev_run,1),ptrace(steady_prev_run,2),matrix_element(1,1,2))
+    psi0 = tensor(ptrace(steady_prev_run,[0,1,2]),matrix_element(1,1,2))
     times = np.linspace(0., t_f, t_steps)
 
     return([
