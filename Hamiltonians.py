@@ -37,24 +37,45 @@ def HI_k(g_sl,g_ml,d_l,k):
 
 def c_ops_ladder_list_k(rate,Tb,e_s,e_l,d_l,k): #returns a list of all jump operators in the ladder plus [0], minus [1] and the energy level list [2]
     e_levels=np.append(np.array([n*e_l for n in range(0,k+1)]),np.array([(e_l*(n-1)+e_s) for n in range(k+1,d_l)]))# Make list of energy levels
-    Rb_pl=[np.sqrt(rate)*np.exp(-(e_levels[l+1]-e_levels[l])/Tb) for l in range(0,d_l-1)] # Make up rates between gaps from energy levels
-    Rb_mi=[np.sqrt(rate) for l in range(0,d_l-1)] # Down rates are given by detailed balance, setting the base-rate to rate
+    if Tb==0:
+        Rb_pl=[0 for l in range(0,d_l-1)] # Make up rates between gaps from energy levels
+        Rb_mi=[np.sqrt(rate) for l in range(0,d_l-1)] # Down rates are given by detailed balance, setting the base-rate to rate
+    else:
+        Rb_pl=[np.sqrt(rate)*np.exp(-(e_levels[l+1]-e_levels[l])/Tb) for l in range(0,d_l-1)] # Make up rates between gaps from energy levels
+        Rb_mi=[np.sqrt(rate) for l in range(0,d_l-1)] # Down rates are given by detailed balance, setting the base-rate to rate
     c_ops_ladder_pl_list=[Rb_pl[l]*tensor(identity(2),identity(2),matrix_element(l+1,l,d_l),identity(2)) for l in range(0,d_l-1)]
     c_ops_ladder_mi_list=[Rb_mi[l]*tensor(identity(2),identity(2),matrix_element(l,l+1,d_l),identity(2)) for l in range(0,d_l-1)]
     return([c_ops_ladder_pl_list,c_ops_ladder_mi_list,e_levels])
 
 
 def c_ops_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_c,e_l,d_l,k): # d_l is the total dimension of the ladder (including the photon part)
-    RH_pl=np.sqrt(rateM*np.exp(-1/TH*(e_c+e_l))/(1+np.exp(-1/TH*(e_c+e_l))))
-    RH_mi=np.sqrt(rateM*1/(1+np.exp(-1/TH*(e_c+e_l))))
-    RC_pl=np.sqrt(rateM*np.exp(-1/TC*e_c)/(1+np.exp(-1/TC*e_c)))
-    RC_mi=np.sqrt(rateM*1/(1+np.exp(-1/TC*e_c)))
+    if TC==0:
+        RC_pl=0
+        RC_mi=np.sqrt(rateM)
+    else:
+        RC_pl=np.sqrt(rateM*np.exp(-1/TC*e_c)/(1+np.exp(-1/TC*e_c)))
+        RC_mi=np.sqrt(rateM*1/(1+np.exp(-1/TC*e_c)))
+
+    if TH=="inf":
+        RH_pl=np.sqrt(rateM/2)
+        RH_mi=np.sqrt(rateM/2)
+    else:
+        RH_pl=np.sqrt(rateM*np.exp(-1/TH*(e_c+e_l))/(1+np.exp(-1/TH*(e_c+e_l))))
+        RH_mi=np.sqrt(rateM*1/(1+np.exp(-1/TH*(e_c+e_l))))
+
+    if Td==0:
+        c_out_curr_p=0*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
+        c_out_curr_m=rateD*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
+    else:
+        c_out_curr_p=rateD*np.exp(-(e_l*(d_l-2)+e_s)/Td)*tensor(identity(2),identity(2),matrix_element(d_l-1,0,d_l),identity(2))
+        c_out_curr_m=rateD*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
+
     c_c_p=RC_pl*tensor(matrix_element(1,0,2),identity(2),identity(d_l),identity(2))
     c_c_m=RC_mi*tensor(matrix_element(0,1,2),identity(2),identity(d_l),identity(2))
     c_h_p=RH_pl*tensor(identity(2),matrix_element(1,0,2),identity(d_l),identity(2))
     c_h_m=RH_mi*tensor(identity(2),matrix_element(0,1,2),identity(d_l),identity(2))
     c_b_p=Qobj(np.sum(c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[0]))
     c_b_m=Qobj(np.sum(c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[1]))
-    c_out_curr_p=rateD*np.exp(-(e_l*(d_l-2)+e_s)/Td)*tensor(identity(2),identity(2),matrix_element(d_l-1,0,d_l),identity(2))
-    c_out_curr_m=rateD*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
+    # c_out_curr_p=rateD*np.exp(-(e_l*(d_l-2)+e_s)/Td)*tensor(identity(2),identity(2),matrix_element(d_l-1,0,d_l),identity(2))
+    # c_out_curr_m=rateD*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
     return([c_out_curr_p,c_out_curr_m,c_b_p,c_b_m,c_c_p,c_c_m,c_h_p,c_h_m])

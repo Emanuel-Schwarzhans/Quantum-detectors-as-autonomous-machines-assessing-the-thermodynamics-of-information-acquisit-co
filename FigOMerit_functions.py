@@ -214,15 +214,21 @@ def L_efficiency(DrazInv,init_state,e_ops,parameters): #takes Lindbladian L,
 
 def L_entropy_production(DrazInv,init_state,e_ops,parameters):
     TC=parameters["TC"]
-    EC=parameters["e_l"]*parameters["e_C_factor"]
-    Lrho=vector_to_operator(DrazInv*init_state)
-    return(np.real(-1/TC*((e_ops[5]+EC*e_ops[2])*Lrho).tr()))
+    if TC==0:
+        return(np.inf)
+    else:
+        EC=parameters["e_l"]*parameters["e_C_factor"]
+        Lrho=vector_to_operator(DrazInv*init_state)
+        return(np.real(-1/TC*((e_ops[5]+EC*e_ops[2])*Lrho).tr()))
 
 def L_entropy_steady_rate(DrazInv,init_state,e_ops,parameters):
     TC=parameters["TC"]
-    e_C=parameters["e_l"]*parameters["e_C_factor"]
-    steady_prev_run=init_state
-    return(expect(e_ops[2]*e_C+e_ops[5],steady_prev_run)/TC)
+    if TC==0:
+        return(np.inf)
+    else:
+        e_C=parameters["e_l"]*parameters["e_C_factor"]
+        steady_prev_run=init_state
+        return(expect(e_ops[2]*e_C+e_ops[5],steady_prev_run)/TC)
 
 def L_jitter(DrazInv,init_state,e_ops,parameters):
     e_ops_current=e_ops[0]
@@ -240,6 +246,26 @@ def L_jitter(DrazInv,init_state,e_ops,parameters):
 
 def L_dark_counts(DrazInv,steady_state,e_ops,parameters):
     return(expect(steady_state,e_ops[0]))
+
+
+def machine_efficiency(parameters):
+    TC=parameters["TC"]
+    TH=parameters["TH"]
+    TV=parameters["TV"]
+    f=parameters["e_C_factor"]
+    if TH==np.inf and TC==0:
+        return(1-1/(f+1)) # this is the efficiency of the machine in the limit of infite TH and 0 TC
+    elif TH==np.inf:
+        return(1+1/(TV/TC-1))
+    elif TC==0:
+        return((1-TC/TH)*(1-1/(f+1)))
+    else:
+        effic=(1-TC/TH)*(1+1/(TV/TC-1))
+        return(effic)
+
+def L_first_gap(L):
+    eigenen=np.sort(np.array(L.eigenenergies()))
+    return(eigenen[1]-eigenen[0])
 
 
 def efficiency(result):
@@ -298,7 +324,7 @@ def get_all_figures_of_merit(result): #returns list of [efficiency, dark count r
     TH=result[9]
     e_C=result[14]
     e_l=result[15]
-    TV=e_l/((e_l-e_C)/TH-e_C/TC)
+    TV=e_l/((e_l+e_C)/TH-e_C/TC)
     effic=efficiency(result)
     darc=dark_counts(result)
     jitt=jitter(result)
@@ -307,17 +333,23 @@ def get_all_figures_of_merit(result): #returns list of [efficiency, dark count r
     return([effic,darc,jitt,ent,ent_rate,result[4],result[5],result[6],result[7],result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],result[16],result[17],result[18],TV,result[19]])
 
 
-def L_get_all_figures_of_merit(DrazInv,init_state,steady_state,e_ops,parameters): #returns list of [efficiency, dark count rate, jitter, entropy production,...] input is
+def L_get_all_figures_of_merit(DrazInv,init_state,steady_state,e_ops,parameters,L=None): #returns list of [efficiency, dark count rate, jitter, entropy production,...] input is
     effic=L_efficiency(DrazInv,init_state,e_ops,parameters)
     darc=L_dark_counts(DrazInv,steady_state,e_ops,parameters)
     jitt=L_jitter(DrazInv,init_state,e_ops,parameters)
     ent=L_entropy_production(DrazInv,init_state,e_ops,parameters)
     ent_rate=L_entropy_steady_rate(DrazInv,steady_state,e_ops,parameters)
+    if L != None:
+        first_gap=L_first_gap(L)
+    else:
+        first_gap=None
     output={"efficiency":effic,
             "dark count rate":darc,
             "jitter":jitt,
             "entropy production":ent,
             "entropy rate":ent_rate,
+            "machine_efficiency":machine_efficiency(parameters),
+            "L first gap":first_gap
     }
     output.update(parameters)
     output_df=pd.DataFrame([output])
@@ -352,10 +384,13 @@ def out_index(el_str): #Outputs a dictionary relating entries of get_all_figures
 
 
 def TH_from_TV_TC(TV,TC,e_C,e_L):
-    return((e_L-e_C)/(e_L/TV+e_C/TC))
+        # Handle division by zero using numpy where
+    result = np.where(TC == 0, np.inf, (e_L + e_C) / (e_L / TV + e_C / TC))
+    return result
+
 
 def TV_from_TH_TC(TH,TC,e_C,e_L):
-    e_H=e_L-e_C
+    e_H=e_L+e_C
     return(e_L/(e_H/TH-e_C/TC))
 
 #Input is the output of get_all_figures_of_merit
@@ -437,6 +472,67 @@ def generate_sample_set_d_TC_TV(d_range,T_C_range,T_V_range,e_s,e_C_factor,e_max
     return(filtered_samples)
 
 
+def generate_sample_set_TC_MaxTV_g_ml_rateD(T_C_range,g_ml_range,rateD_range,parameters,sample_size):
+    #Generate samples of variables TC, TV, g_ml, g_ld
+
+    filtered_samples=[]
+
+    while len(filtered_samples) < sample_size:
+        sampler=LatinHypercube(3)
+        samples=np.array(sampler.random(n=50))# 50 is just a number big enough to have a good set to filter from while not taking too long an overshooting too much
+
+
+        #scale other variables
+        scaled_samples = scale(samples, [T_C_range[0],g_ml_range[0],rateD_range[0]],
+                               [T_C_range[1],g_ml_range[1],rateD_range[1]])
+
+        #implementing sampling constraint for temperature
+        T_C = scaled_samples[:, 0]
+        T_V=-T_C/parameters["e_C_factor"]*(1+parameters["epsilon"])
+        d_l=parameters["d_l"]
+        e_l=(parameters["e_max"]-parameters["e_s"])/(d_l-2)
+        e_C=parameters["e_C_factor"]*e_l
+
+        T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
+        valid_samples = scaled_samples[T_H >= T_C*(e_l+e_C)/e_C]
+        # Add valid samples to the filtered list
+        filtered_samples.extend(valid_samples)
+
+        if len(filtered_samples) > sample_size:
+            filtered_samples = filtered_samples[:sample_size]
+    return(filtered_samples)
+
+
+def generate_sample_set_TC_MaxTV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,g_ml_range,g_sl_range,rateD_range,e_C_factor_range,rateM_range,parameters,sample_size):
+
+    filtered_samples=[]
+
+    while len(filtered_samples) < sample_size:
+        sampler=LatinHypercube(6)
+        samples=np.array(sampler.random(n=50))# 50 is just a number big enough to have a good set to filter from while not taking too long an overshooting too much
+
+
+        #scale other variables
+        scaled_samples = scale(samples, [T_C_range[0],g_ml_range[0],g_sl_range[0],rateD_range[0],e_C_factor_range[0],rateM_range[0]],
+                               [T_C_range[1],g_ml_range[1],g_sl_range[1],rateD_range[1],e_C_factor_range[1],rateM_range[1]])
+
+        #implementing sampling constraint for temperature
+        T_C = scaled_samples[:, 0]
+        e_C_factor=scaled_samples[:,4]
+        T_V=-T_C/e_C_factor*(1+parameters["epsilon"])
+        d_l=parameters["d_l"]
+        e_l=(parameters["e_max"]-parameters["e_s"])/(d_l-2)
+        e_C=e_C_factor*e_l
+        T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
+
+        valid_samples = scaled_samples[T_H >= T_C*(e_l+e_C)/e_C]
+        # Add valid samples to the filtered list
+        filtered_samples.extend(valid_samples)
+
+        if len(filtered_samples) > sample_size:
+            filtered_samples = filtered_samples[:sample_size]
+    return(filtered_samples)
+
 def generate_sample_set_TC_TV_g_ml_rateD(T_C_range,T_V_range,g_ml_range,rateD_range,parameters,sample_size):
     #Generate samples of variables TC, TV, g_ml, g_ld
 
@@ -467,13 +563,44 @@ def generate_sample_set_TC_TV_g_ml_rateD(T_C_range,T_V_range,g_ml_range,rateD_ra
             filtered_samples = filtered_samples[:sample_size]
     return(filtered_samples)
 
+
+def generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,T_V_range,g_ml_range,g_sl_range,rateD_range,e_C_factor_range,rateM_range,parameters,sample_size):
+    #Generate samples of variables TC, TV, g_ml, g_ld
+
+    filtered_samples=[]
+
+    while len(filtered_samples) < sample_size:
+        sampler=LatinHypercube(7)
+        samples=np.array(sampler.random(n=50))# 50 is just a number big enough to have a good set to filter from while not taking too long an overshooting too much
+
+        #scale other variables
+        scaled_samples = scale(samples, [T_C_range[0],T_V_range[0],g_ml_range[0],g_sl_range[0],rateD_range[0],e_C_factor_range[0],rateM_range[0]],
+                               [T_C_range[1],T_V_range[1],g_ml_range[1],g_sl_range[1],rateD_range[1],e_C_factor_range[1],rateM_range[1]])
+
+        #implementing sampling constraint for temperature
+        T_C = scaled_samples[:, 0]
+        T_V = scaled_samples[:, 1]
+        e_C_factor=scaled_samples[:,4]
+        d_l=parameters["d_l"]
+        e_l=(parameters["e_max"]-parameters["e_s"])/(d_l-2)
+        e_C=e_C_factor*e_l
+        T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
+
+        valid_samples = scaled_samples[T_H >= T_C*(e_l+e_C)/e_C]
+
+        # Add valid samples to the filtered list
+        filtered_samples.extend(valid_samples)
+        if len(filtered_samples) > sample_size:
+            filtered_samples = filtered_samples[:sample_size]
+    return(filtered_samples)
+
 def safe_qload(filename):
     if os.path.exists(filename + '.qu'):
         return qload(filename)
     else:
         return []
 
-def generate_dataset_TC_TV_g_ml_rateD(sample_set,filename_save_load,parameters):
+def generate_dataset_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(sample_set,filename_save_load,parameters):
     try:
         FOM_LHC_sampling = pd.read_csv(filename_save_load)  # Load existing dataset
     except FileNotFoundError:
@@ -481,15 +608,17 @@ def generate_dataset_TC_TV_g_ml_rateD(sample_set,filename_save_load,parameters):
         FOM_LHC_sampling = pd.DataFrame()  # Start fresh if file doesn't exist
 
     for sample in sample_set:
-        parameters["TC"],parameters["TV"],parameters["g_ml"],parameters["rateD"] = sample  # Unpack parameters
+        parameters["TC"],parameters["TV"],parameters["g_ml"],parameters["g_sl"],parameters["rateD"], parameters["e_C_factor"],parameters["rateM"] = sample  # Unpack parameters
 
-        parameters["Tb"]=parameters["TC"]
-        parameters["Td"]=parameters["TC"]
+        if parameters["Tb_indep_flag"]==False:
+            parameters["Tb"]=parameters["TC"]
 
-        parameters["TH"]=TH_from_TV_TC(parameters["TV"],
-                                       parameters["TC"],
-                                       parameters["e_l"]*parameters["e_C_factor"],
-                                       parameters["e_l"])
+        if parameters["Td_indep_flag"]==False:
+            parameters["Td"]=parameters["TC"]
+
+        parameters["e_l"] = (parameters["e_max"] - parameters["e_s"]) / (parameters["d_l"] - 2)
+        parameters["e_C"] = parameters["e_l"] * parameters["e_C_factor"]
+        parameters["TH"] = TH_from_TV_TC(parameters["TV"], parameters["TC"], parameters["e_C"], parameters["e_l"])
 
         H=(
             H0_k(   parameters["e_s"],
@@ -521,6 +650,122 @@ def generate_dataset_TC_TV_g_ml_rateD(sample_set,filename_save_load,parameters):
     FOM_LHC_sampling.reset_index(drop=True, inplace=True)
     FOM_LHC_sampling.to_csv(filename_save_load,index=False)
     return(FOM_LHC_sampling)
+
+
+
+def generate_dataset_TC_MaxTV_g_ml_rateD(sample_set,filename_save_load,parameters):
+    try:
+        FOM_LHC_sampling = pd.read_csv(filename_save_load)  # Load existing dataset
+    except FileNotFoundError:
+        print("File does not exist, starting new one with tile: ", filename_save_load)
+        FOM_LHC_sampling = pd.DataFrame()  # Start fresh if file doesn't exist
+
+    for sample in sample_set:
+        parameters["TC"],parameters["g_ml"],parameters["rateD"] = sample  # Unpack parameters
+
+        if parameters["Tb_indep_flag"]==False:
+            parameters["Tb"]=parameters["TC"]
+
+        if parameters["Td_indep_flag"]==False:
+            parameters["Td"]=parameters["TC"]
+
+        # Set TV to max given the flag is for it is raised
+        if parameters["Max_TV_flag"]== True:
+            parameters["TV"]=-parameters["TC"]/parameters["e_C_factor"]*(1+parameters["epsilon"])
+        else:
+            raise(ValueError("Max_TV_flag=False, but needs to be set True for this parameter sampling function!"))
+
+
+        parameters["e_l"] = (parameters["e_max"] - parameters["e_s"]) / (parameters["d_l"] - 2)
+        parameters["e_C"] = parameters["e_l"] * parameters["e_C_factor"]
+        parameters["TH"] = TH_from_TV_TC(parameters["TV"], parameters["TC"], parameters["e_C"], parameters["e_l"])
+
+        H=(
+            H0_k(   parameters["e_s"],
+                    parameters["e_l"],
+                    parameters["e_C"],
+                    parameters["d_l"],
+                    parameters["k"])
+            +HI_k(parameters["g_sl"],
+                    parameters["g_ml"],
+                    parameters["d_l"],
+                    parameters["k"]))
+
+        e_ops=get_e_ops(parameters)
+        # Jump operators
+        c_ops=c_ops_k(parameters["rateM"], parameters["rateB"], parameters["rateD"], parameters["TH"],
+                parameters["TC"], parameters["Tb"], parameters["Td"], parameters["e_s"],
+                parameters["e_C"], parameters["e_l"], parameters["d_l"], parameters["k"])
+        l=liouvillian(H,c_ops)
+        drinv=pseudo_inverse(l,method="spsolve")
+        steady=steadystate(H,c_ops)
+        init=operator_to_vector(tensor(ptrace(steady,[0,1,2]),matrix_element(1,1,2)))
+
+        FOM_vals = L_get_all_figures_of_merit(drinv,init,steady,e_ops,parameters)  # Evaluate function
+        FOM_LHC_sampling=pd.concat([FOM_LHC_sampling, FOM_vals])
+
+    FOM_LHC_sampling.reset_index(drop=True, inplace=True)
+    FOM_LHC_sampling.to_csv(filename_save_load,index=False)
+    return(FOM_LHC_sampling)
+
+
+def generate_dataset_TC_MaxTV_g_ml_g_sl_rateD_eCfactor_rateM(sample_set,filename_save_load,parameters):
+    try:
+        FOM_LHC_sampling = pd.read_csv(filename_save_load)  # Load existing dataset
+    except FileNotFoundError:
+        print("File does not exist, starting new one with tile: ", filename_save_load)
+        FOM_LHC_sampling = pd.DataFrame()  # Start fresh if file doesn't exist
+
+    for sample in sample_set:
+        parameters["TC"],parameters["g_ml"],parameters["g_sl"],parameters["rateD"], parameters["e_C_factor"],parameters["rateM"] = sample  # Unpack parameters
+
+        if parameters["Tb_indep_flag"]==False:
+            parameters["Tb"]=parameters["TC"]
+
+        if parameters["Td_indep_flag"]==False:
+            parameters["Td"]=parameters["TC"]
+
+        # Set TV to max given the flag is for it is raised
+        if parameters["Max_TV_flag"]== True:
+            parameters["TV"]=-parameters["TC"]/parameters["e_C_factor"]*(1+parameters["epsilon"])
+        else:
+            raise(ValueError("Max_TV_flag=False, but needs to be set True for this parameter sampling function!"))
+
+
+        parameters["e_l"] = (parameters["e_max"] - parameters["e_s"]) / (parameters["d_l"] - 2)
+        parameters["e_C"] = parameters["e_l"] * parameters["e_C_factor"]
+        parameters["TH"] = TH_from_TV_TC(parameters["TV"], parameters["TC"], parameters["e_C"], parameters["e_l"])
+
+        H=(
+            H0_k(   parameters["e_s"],
+                    parameters["e_l"],
+                    parameters["e_C"],
+                    parameters["d_l"],
+                    parameters["k"])
+            +HI_k(parameters["g_sl"],
+                    parameters["g_ml"],
+                    parameters["d_l"],
+                    parameters["k"]))
+
+        e_ops=get_e_ops(parameters)
+        # Jump operators
+        c_ops=c_ops_k(parameters["rateM"], parameters["rateB"], parameters["rateD"], parameters["TH"],
+                parameters["TC"], parameters["Tb"], parameters["Td"], parameters["e_s"],
+                parameters["e_C"], parameters["e_l"], parameters["d_l"], parameters["k"])
+        l=liouvillian(H,c_ops)
+        drinv=pseudo_inverse(l,method="spsolve")
+        steady=steadystate(H,c_ops)
+        init=operator_to_vector(tensor(ptrace(steady,[0,1,2]),matrix_element(1,1,2)))
+
+        FOM_vals = L_get_all_figures_of_merit(drinv,init,steady,e_ops,parameters)  # Evaluate function
+        FOM_LHC_sampling=pd.concat([FOM_LHC_sampling, FOM_vals])
+
+    FOM_LHC_sampling.reset_index(drop=True, inplace=True)
+    FOM_LHC_sampling.to_csv(filename_save_load,index=False)
+    return(FOM_LHC_sampling)
+
+
+
 
 def generate_dataset_d_TC_TV(sample_set,filename_save_load,rateM,rateB,rateD,e_s,e_C_factor,e_max,g_sl,g_ml,t_f,t_steps,k):
     FOM_LHC_sampling=safe_qload(filename_save_load)
@@ -571,6 +816,7 @@ def get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception: e
             parameters["TV"]=TV_from_TH_TC(parameters["TH"],parameters["TC"],parameters["e_l"]*parameters["e_C_factor"],parameters["e_l"])
         parameters[param_str]=param
         if (parameters["TH"] >=parameters["TC"]*(parameters["e_l"]+parameters["e_C_factor"]*parameters["e_l"])/(parameters["e_C_factor"]*parameters["e_l"]) and parameters["TV"]<=0):
+
             data.append(get_all_figures_of_merit(
             get_dynamics_k(
                 parameters["rateM"],
@@ -594,13 +840,81 @@ def get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception: e
     return(data)
 
 
+def Parameter_plot(param_dict, param_str, param_range):
+    # Check if the parameter to be varied is a basic parameter
+    if param_str not in ["TC", "TV", "g_ml", "rateD", "e_C_factor", "e_max", "e_s","Tb","Td"]:
+        raise ValueError("param_str not basic parameter")
+
+    data = pd.DataFrame()
+    parameters = param_dict.copy()
+
+
+
+
+    # Iterate over the range of the parameter to be varied
+    for param in param_range:
+        if parameters["Td_eq_Tb_flag"]== True and (parameters["Tb_indep_flag"]==False or parameters["Td_indep_flag"]==False):
+            raise ValueError("Td=Tb flag raised but Tb or Td are not independent")
+        elif parameters["Td_eq_Tb_flag"]== True:
+            if param_str == "Tb":
+                parameters["Td"] = param
+            elif param_str == "Td":
+                parameters["Tb"] = param
+            elif parameters["Tb"]!=parameters["Td"]:
+                raise ValueError("Td=Tb flag raised but non of them is the parameter and they are not equal, set them equal before!")
+        else:
+            # Ensure Tb and Td are set to TC if the independent flag is False
+            if parameters["Tb_indep_flag"] == False:
+                parameters["Tb"] = parameters["TC"]
+            if parameters["Td_indep_flag"] == False:
+                parameters["Td"] = parameters["TC"]
+
+        # Set Tb and Td equal given that flag is raised, error if they are not the same and non is param_str
+
+
+
+        parameters[param_str] = param
+
+        # Set TV to max given the flag is for it is raised
+        if (parameters["Max_TV_flag"]==True):
+            parameters["TV"]=-parameters["TC"]/parameters["e_C_factor"]*(1+parameters["epsilon"])
+
+
+
+        # Calculate e_l and e_C based on the current parameter values
+        parameters["e_l"] = (parameters["e_max"] - parameters["e_s"]) / (parameters["d_l"] - 2)
+        parameters["e_C"] = parameters["e_l"] * parameters["e_C_factor"]
+        # Calculate TH based on the current parameter values
+        parameters["TH"] = TH_from_TV_TC(parameters["TV"], parameters["TC"], parameters["e_C"], parameters["e_l"])
+        # Get the Liouvillian, Drazin inverse, initial state, and steady state
+        L, DrazInv, init_state, steady_state = get_L_Draz_Init_Steady(parameters)
+        # Get the expectation operators
+        e_ops = get_e_ops(parameters)
+        # Check if the current parameter values are valid
+        if (parameters["TH"] >= 0 and parameters["TV"] <= 0):
+            # Concatenate the figures of merit for the current parameter values to the data DataFrame
+            data = pd.concat([data, L_get_all_figures_of_merit(DrazInv, init_state, steady_state, e_ops, parameters)])
+
+    return data
+
 
 def L_get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception: e_l can not be used as parameter for change
     data=pd.DataFrame()
     parameters=param_dict.copy()
+
+    parameters["e_l"]=(parameters["e_max"]-parameters["e_s"])/(parameters["d_l"]-2)
+    parameters["e_C"]=parameters["e_l"]*parameters["e_C_factor"]
+    if param_str != ("e_l" and "TV" and "TH" and "e_C_factor"):
+       parameters["TH"]=TH_from_TV_TC(parameters["TV"],parameters["TC"],parameters["e_C"],(-parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2))
+
     for param in param_range:
         parameters[param_str]=param
-
+        if param_str=="e_C_factor":
+            parameters["e_C"]=parameters["e_l"]*parameters["e_C_factor"]
+            parameters["TH"]=TH_from_TV_TC(parameters["TV"],
+                                           parameters["TC"],
+                                           parameters["e_C"],
+                                           (-parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2))
         if param_str=="e_s" or param_str=="e_max":
             parameters["e_l"]=(-parameters["e_s"] + parameters["e_max"]) / (parameters["d_l"] - 2)
 
@@ -612,9 +926,13 @@ def L_get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception:
             parameters["TV"]=TV_from_TH_TC(parameters["TH"],parameters["TC"],parameters["e_l"]*parameters["e_C_factor"],parameters["e_l"])
 
         parameters[param_str]=param
-        parameters["Tb"]=parameters["TC"]
-        parameters["Td"]=parameters["TC"]
-        if (parameters["TH"] >=parameters["TC"]*(parameters["e_l"]+parameters["e_C_factor"]*parameters["e_l"])/(parameters["e_C_factor"]*parameters["e_l"]) and parameters["TV"]<=0):
+        if parameters["Tb_indep_flag"]==False:
+            parameters["Tb"]=parameters["TC"]
+        if parameters["Td_indep_flag"]==False:
+            parameters["Td"]=parameters["TC"]
+
+        if (parameters["TH"] >=0 and parameters["TV"]<=0 and parameters["TH"]>= parameters["TC"]):
+
             L,DrazInv,init_state,steady_state=get_L_Draz_Init_Steady(parameters)
             e_ops=get_e_ops(parameters)
             data=pd.concat([data, L_get_all_figures_of_merit(DrazInv,init_state,steady_state,e_ops,parameters)])
@@ -624,9 +942,11 @@ def L_get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception:
 def get_L_Draz_Init_Steady(parameters):
 # returns vectorized Liouvillian, Drazin inverse and initial state, and density matrix steady state (not vectorised),
 # takes the dict of parameters
+    if parameters["Tb_indep_flag"]==False:
+        parameters["Tb"]=parameters["TC"]
+    if parameters["Td_indep_flag"]==False:
+        parameters["Td"]=parameters["TC"]
 
-    parameters["Tb"]=parameters["TC"]
-    parameters["Td"]=parameters["TC"]
 
     parameters["TH"]=TH_from_TV_TC(parameters["TV"],
                                     parameters["TC"],
@@ -656,3 +976,12 @@ def get_L_Draz_Init_Steady(parameters):
     init=operator_to_vector(tensor(ptrace(steady,[0,1,2]),matrix_element(1,1,2)))
 
     return([l,drinv,init,steady])
+
+
+def get_parameter_range_of_dataset(dataset):
+    rel_par_range={}
+    for par in dataset.columns:
+        maxpar=dataset[par].values.max()
+        minpar=dataset[par].values.min()
+        rel_par_range[par]=[minpar,maxpar]
+    return(pd.DataFrame([rel_par_range]))
