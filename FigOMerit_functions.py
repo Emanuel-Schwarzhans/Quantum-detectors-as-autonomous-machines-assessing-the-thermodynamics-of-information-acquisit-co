@@ -237,9 +237,9 @@ def L_jitter(DrazInv,init_state,e_ops,parameters):
     Lrho=vector_to_operator(DrazInv@init_state)
     normalize=(e_ops_current@Lrho).tr()
 
-    expt2=1/normalize*(2*e_ops_current*L3rho).tr()
-    expt=1/normalize*(e_ops_current*L2rho).tr()
-    jitter=np.sqrt(expt2-expt**2)
+    expt2=(2*e_ops_current*L3rho).tr()
+    expt=(e_ops_current*L2rho).tr()
+    jitter=np.sqrt(1/normalize*(expt2-expt**2))
 
     return(np.real(jitter))
 
