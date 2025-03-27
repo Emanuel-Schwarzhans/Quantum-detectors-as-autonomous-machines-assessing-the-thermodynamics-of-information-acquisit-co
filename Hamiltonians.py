@@ -65,10 +65,10 @@ def c_ops_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_c,e_l,d_l,k): # d_l is the total
 
     if Td==0:
         c_out_curr_p=0*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
-        c_out_curr_m=rateD*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
+        c_out_curr_m=np.sqrt(rateD)*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
     else:
-        c_out_curr_p=rateD*np.exp(-(e_l*(d_l-2)+e_s)/Td)*tensor(identity(2),identity(2),matrix_element(d_l-1,0,d_l),identity(2))
-        c_out_curr_m=rateD*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
+        c_out_curr_p=np.sqrt(rateD*np.exp(-(e_l*(d_l-2)+e_s)/Td))*tensor(identity(2),identity(2),matrix_element(d_l-1,0,d_l),identity(2))
+        c_out_curr_m=np.sqrt(rateD)*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
 
     c_c_p=RC_pl*tensor(matrix_element(1,0,2),identity(2),identity(d_l),identity(2))
     c_c_m=RC_mi*tensor(matrix_element(0,1,2),identity(2),identity(d_l),identity(2))
@@ -79,3 +79,18 @@ def c_ops_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_c,e_l,d_l,k): # d_l is the total
     # c_out_curr_p=rateD*np.exp(-(e_l*(d_l-2)+e_s)/Td)*tensor(identity(2),identity(2),matrix_element(d_l-1,0,d_l),identity(2))
     # c_out_curr_m=rateD*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
     return([c_out_curr_p,c_out_curr_m,c_b_p,c_b_m,c_c_p,c_c_m,c_h_p,c_h_m])
+
+def get_c_ops(parameters):
+    rateM=parameters["rateM"]
+    rateB=parameters["rateB"]
+    rateD=parameters["rateD"]
+    TH=parameters["TH"]
+    TC=parameters["TC"]
+    Tb=parameters["Tb"]
+    Td=parameters["Td"]
+    e_s=parameters["e_s"]
+    e_c=parameters["e_C"]
+    e_l=parameters["e_l"]
+    d_l=parameters["d_l"]
+    k=parameters["k"]
+    return(c_ops_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_c,e_l,d_l,k))
