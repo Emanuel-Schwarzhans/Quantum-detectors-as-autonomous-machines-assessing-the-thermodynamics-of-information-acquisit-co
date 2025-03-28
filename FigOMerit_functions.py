@@ -971,8 +971,8 @@ def get_L_Draz_Init_Steady(parameters):
             parameters["e_C"], parameters["e_l"], parameters["d_l"], parameters["k"])
 
     l=liouvillian(H,c_ops)
-    drinv=pseudo_inverse(l,method="spsolve")
     steady=steadystate(H,c_ops)
+    drinv=pseudo_inverse(l,rhoss=steady,method="spsolve")
     init=operator_to_vector(tensor(ptrace(steady,[0,1,2]),matrix_element(1,1,2)))
 
     return([l,drinv,init,steady])
@@ -985,3 +985,69 @@ def get_parameter_range_of_dataset(dataset):
         minpar=dataset[par].values.min()
         rel_par_range[par]=[minpar,maxpar]
     return(pd.DataFrame([rel_par_range]))
+
+from qutip import Qobj
+import numpy as np
+
+def chop(matrix, threshold=1e-10):
+    """
+    Sets all elements of a matrix below a given threshold to 0.
+    Works with both numpy arrays and Qobj.
+
+    Parameters:
+        matrix (numpy.ndarray or Qobj): The input matrix.
+        threshold (float): The threshold below which elements are set to 0.
+
+    Returns:
+        numpy.ndarray or Qobj: The modified matrix with small elements set to 0.
+    """
+    if isinstance(matrix, Qobj):
+        # If it's a Qobj, apply chop to its data and return a new Qobj
+        chopped_data = np.array(matrix.full())
+        chopped_data[np.abs(chopped_data) < threshold] = 0
+        return Qobj(chopped_data, dims=matrix.dims)
+    else:
+        # If it's a numpy array, apply chop directly
+        matrix = np.array(matrix)  # Ensure input is a numpy array
+        matrix[np.abs(matrix) < threshold] = 0
+        return matrix
+
+
+def find_largest_overlap_qutip(list1, list2):
+    """
+    Find the index of the vector in list2 that has the largest overlap with each vector in list1.
+
+    Args:
+        list1 (list of Qobj): First list of Qobj vectors.
+        list2 (list of Qobj): Second list of Qobj vectors.
+
+    Returns:
+        list of tuples: Each tuple contains the index of the vector in list1 and the index of the vector in list2
+                        with the largest overlap.
+    """
+    result = []
+    for i, vec1 in enumerate(list1):
+        max_overlap = -np.inf
+        max_index = -1
+        for j, vec2 in enumerate(list2):
+            overlap = np.abs((vec1.trans() @ vec2))  # Compute the absolute value of the inner product
+            if overlap > max_overlap:
+                max_overlap = overlap
+                max_index = j
+        result.append((i,max_index, max_overlap))  # Append the indices of the vectors with the largest overlap
+    return result
+
+def eigensystem_LR(L):
+    eigsys_R=np.array(L.eigenstates())
+    eigsys_L=np.array(L.trans().eigenstates())
+# returns the eigenvalues and the left and right eigenvectors of the Liouvillian L and the eigenvalues
+    overlap_list=find_largest_overlap_qutip(eigsys_L[1],eigsys_R[1])
+    for ovl in overlap_list:
+        eigst_L=eigsys_L[1,ovl[0]]
+        eigst_R=eigsys_R[1,ovl[1]]
+        eigst_L=eigst_L/(eigst_L.trans()@eigst_R)
+        eigst_R=eigst_R/(eigst_L.trans()@eigst_R)
+        print(eigst_L.trans()@eigst_R)
+        eigval=eigsys_L[0][ovl[0]]
+        eigensystem_LR.append([eigval,eigst_L,eigst_R])
+    return eigensystem_LR
