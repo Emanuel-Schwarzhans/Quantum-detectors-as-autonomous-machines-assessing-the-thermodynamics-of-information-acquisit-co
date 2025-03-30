@@ -34,6 +34,19 @@ def HI_k(g_sl,g_ml,d_l,k):
     HI_0=HI_0+HI_0.dag()
     return(HI_0.to(core.data.CSR))
 
+def H_k_params(parameters):
+    g_sl=parameters["g_sl"]
+    g_ml=parameters["g_ml"]
+    e_s=parameters["e_s"]
+    e_l=parameters["e_l"]
+    e_c=parameters["e_C"]
+    d_l=parameters["d_l"]
+    k=parameters["k"]
+    H0=H0_k(e_s,e_l,e_c,d_l,k)
+    HI=HI_k(g_sl,g_ml,d_l,k)
+    H=H0+HI
+    return(H)
+
 
 def c_ops_ladder_list_k(rate,Tb,e_s,e_l,d_l,k): #returns a list of all jump operators in the ladder plus [0], minus [1] and the energy level list [2]
     e_levels=np.append(np.array([n*e_l for n in range(0,k+1)]),np.array([(e_l*(n-1)+e_s) for n in range(k+1,d_l)]))# Make list of energy levels

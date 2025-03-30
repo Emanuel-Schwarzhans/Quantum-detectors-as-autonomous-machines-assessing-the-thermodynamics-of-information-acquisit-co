@@ -10,29 +10,21 @@ import os
 
 def get_dynamics_k_new(parameters):
     # Total Hamiltonian
-    rateM = parameters["rateM"]
-    rateB = parameters["rateB"]
-    rateD = parameters["rateD"]
-    TH = parameters["TH"]
-    TC = parameters["TC"]
-    Tb = parameters["Tb"]
-    Td = parameters["Td"]
-    e_s = parameters["e_s"]
-    e_C = parameters["e_C_factor"]*parameters["e_l"]
-    e_l = parameters["e_l"]
-    g_sl = parameters["g_sl"]
-    g_ml = parameters["g_ml"]
-    d_l = parameters["d_l"]
     t_f = parameters["t_f"]
     t_steps = parameters["t_steps"]
-    k = parameters["k"]
+
+    parameters["TH"]=TH_from_TV_TC(parameters["TV"],
+                                        parameters["TC"],
+                                        parameters["e_l"]*parameters["e_C_factor"],
+                                        parameters["e_l"])
 
 
-    H=H0_k(e_s,e_l,e_C,d_l,k)+HI_k(g_sl,g_ml,d_l,k)
+    H=H_k_params(parameters)
+    # H=H0_k(e_s,e_l,e_C,d_l,k)+HI_k(g_sl,g_ml,d_l,k)
 
     # Jump operators
-    c_ops=c_ops_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,d_l,k)
-
+    # c_ops=c_ops_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,d_l,k)
+    c_ops=get_c_ops(parameters)
     ### --- e_ops:######################################
     # index     0                   1                   2               3               4                   5
     # operator  detect current      ladder-bath-curr    cold-m curr     hot-m curr      ready-state pop     energy-curr ladder-bath
@@ -45,29 +37,29 @@ def get_dynamics_k_new(parameters):
     times = np.linspace(0., t_f, t_steps)
 
     return([
-        mesolve(H,psi0,
+        mesolve(H, psi0,
                 tlist=times,
                 c_ops=c_ops,
                 e_ops=e_ops),       #0
         steady_prev_run,            #1
         e_ops,                      #2
         c_ops,                      #3
-        t_f,                        #4
-        t_steps,                    #5
-        rateM,                      #6
-        rateB,                      #7
-        rateD,                      #8
-        TH,                         #9
-        TC,                         #10
-        Tb,                         #11
-        Td,                         #12
-        e_s,                        #13
-        e_C,                        #14
-        e_l,                        #15
-        g_sl,                       #16
-        g_ml,                       #17
-        d_l,                        #18
-        k,                          #19
+        parameters["t_f"],          #4
+        parameters["t_steps"],      #5
+        parameters["rateM"],        #6
+        parameters["rateB"],        #7
+        parameters["rateD"],        #8
+        parameters["TH"],           #9
+        parameters["TC"],           #10
+        parameters["Tb"],           #11
+        parameters["Td"],           #12
+        parameters["e_s"],          #13
+        parameters["e_C"],          #14
+        parameters["e_l"],          #15
+        parameters["g_sl"],         #16
+        parameters["g_ml"],         #17
+        parameters["d_l"],          #18
+        parameters["k"],            #19
         H])                         #20
 
 
@@ -141,22 +133,23 @@ def get_dynamics_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l,t_f,t
 
 ####get_e_ops returns exp operators####
 def get_e_ops(parameters):
-    c_ops=c_ops_k(parameters["rateM"],
-            parameters["rateB"],
-            parameters["rateD"],
-            parameters["TH"],
-            parameters["TC"],
-            parameters["Tb"],
-            parameters["Td"],
-            parameters["e_s"],
-            parameters["e_C"],
-            parameters["e_l"],
-            parameters["d_l"],
-            parameters["k"])
+    c_ops=get_c_ops(parameters)
+    # c_ops=c_ops_k(parameters["rateM"],
+    #         parameters["rateB"],
+    #         parameters["rateD"],
+    #         parameters["TH"],
+    #         parameters["TC"],
+    #         parameters["Tb"],
+    #         parameters["Td"],
+    #         parameters["e_s"],
+    #         parameters["e_C"],
+    #         parameters["e_l"],
+    #         parameters["d_l"],
+    #         parameters["k"])
     ### --- e_ops:######################################
     # index     0                   1                   2               3               4                   5
     # operator  detect current      ladder-bath-curr    cold-m curr     hot-m curr      ready-state pop     energy-curr ladder-bath
-    e_ready=tensor(identity(2),identity(2),matrix_element(parameters["k"],parameters["k"],parameters["d_l"]),identity(2))
+    e_ready=Qobj(tensor(identity(2),identity(2),matrix_element(parameters["k"],parameters["k"],parameters["d_l"]),identity(2)))
     e_energy_curr_ladder_bath=-Qobj(np.sum([c_ops_ladder_list_k(parameters["rateB"],
                                                                 parameters["Tb"],
                                                                 parameters["e_s"],
@@ -207,8 +200,8 @@ def L_efficiency(DrazInv,init_state,e_ops,parameters): #takes Lindbladian L,
     # init_state=operator_to_vector(tensor(ptrace(steady_prev_run,[0,1,2]),matrix_element(1,1,2))) # initialising in the conditional "photon is there" state
     e_ops_current=e_ops[0]
     # Lrho=vector_to_operator(pseudo_inverse(liouvillian(H,c_ops),method="spsolve")*init_state)
-    Lrho=vector_to_operator(DrazInv*init_state)
-    effic=-(e_ops_current*Lrho).tr()
+    Lrho=vector_to_operator(DrazInv@init_state)
+    effic=-(e_ops_current@Lrho).tr()
     return(np.real(effic))
 
 
@@ -942,33 +935,32 @@ def L_get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception:
 def get_L_Draz_Init_Steady(parameters):
 # returns vectorized Liouvillian, Drazin inverse and initial state, and density matrix steady state (not vectorised),
 # takes the dict of parameters
-    if parameters["Tb_indep_flag"]==False:
-        parameters["Tb"]=parameters["TC"]
-    if parameters["Td_indep_flag"]==False:
-        parameters["Td"]=parameters["TC"]
+    parameters_copy=parameters.copy()
+    if parameters_copy["Tb_indep_flag"]==False:
+        parameters_copy["Tb"]=parameters_copy["TC"]
+    if parameters_copy["Td_indep_flag"]==False:
+        parameters_copy["Td"]=parameters_copy["TC"]
 
 
-    parameters["TH"]=TH_from_TV_TC(parameters["TV"],
-                                    parameters["TC"],
-                                    parameters["e_l"]*parameters["e_C_factor"],
-                                    parameters["e_l"])
+    parameters_copy["TH"]=TH_from_TV_TC(parameters_copy["TV"],
+                                        parameters_copy["TC"],
+                                        parameters_copy["e_l"]*parameters_copy["e_C_factor"],
+                                        parameters_copy["e_l"])
 
-    H=(
-        H0_k(   parameters["e_s"],
-                parameters["e_l"],
-                parameters["e_C"],
-                parameters["d_l"],
-                parameters["k"])
-        +HI_k(parameters["g_sl"],
-                parameters["g_ml"],
-                parameters["d_l"],
-                parameters["k"]))
+    # H=(
+    #     H0_k(   parameters_copy["e_s"],
+    #             parameters_copy["e_l"],
+    #             parameters_copy["e_C"],
+    #             parameters_copy["d_l"],
+    #             parameters_copy["k"])
+    #     +HI_k(parameters_copy["g_sl"],
+    #             parameters_copy["g_ml"],
+    #             parameters_copy["d_l"],
+    #             parameters_copy["k"]))
 
-
+    H=H_k_params(parameters_copy)
     # Jump operators
-    c_ops=c_ops_k(parameters["rateM"], parameters["rateB"], parameters["rateD"], parameters["TH"],
-            parameters["TC"], parameters["Tb"], parameters["Td"], parameters["e_s"],
-            parameters["e_C"], parameters["e_l"], parameters["d_l"], parameters["k"])
+    c_ops=get_c_ops(parameters_copy)
 
     l=liouvillian(H,c_ops)
     steady=steadystate(H,c_ops)
@@ -1040,14 +1032,15 @@ def find_largest_overlap_qutip(list1, list2):
 def eigensystem_LR(L):
     eigsys_R=np.array(L.eigenstates())
     eigsys_L=np.array(L.trans().eigenstates())
+    eigensystem_LR_out=[]
 # returns the eigenvalues and the left and right eigenvectors of the Liouvillian L and the eigenvalues
     overlap_list=find_largest_overlap_qutip(eigsys_L[1],eigsys_R[1])
     for ovl in overlap_list:
-        eigst_L=eigsys_L[1,ovl[0]]
-        eigst_R=eigsys_R[1,ovl[1]]
-        eigst_L=eigst_L/(eigst_L.trans()@eigst_R)
+        eigst_L=Qobj(eigsys_L[1,ovl[0]])
+        eigst_R=Qobj(eigsys_R[1,ovl[1]])
+        # eigst_L=eigst_L/(eigst_L.trans()@eigst_R)
         eigst_R=eigst_R/(eigst_L.trans()@eigst_R)
-        print(eigst_L.trans()@eigst_R)
+        # print(eigst_L.trans()@eigst_R)
         eigval=eigsys_L[0][ovl[0]]
-        eigensystem_LR.append([eigval,eigst_L,eigst_R])
-    return eigensystem_LR
+        eigensystem_LR_out.append([eigval,eigst_L,eigst_R])
+    return eigensystem_LR_out
