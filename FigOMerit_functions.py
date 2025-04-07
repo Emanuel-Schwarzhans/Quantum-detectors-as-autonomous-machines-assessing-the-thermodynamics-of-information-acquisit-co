@@ -1044,3 +1044,26 @@ def eigensystem_LR(L):
         eigval=eigsys_L[0][ovl[0]]
         eigensystem_LR_out.append([eigval,eigst_L,eigst_R])
     return eigensystem_LR_out
+
+
+def get_current_super_op(parameters):
+    cops=get_c_ops(parameters)
+    JD_super= qutip.sprepost(cops[1],cops[1].dag())-qutip.sprepost(cops[0],cops[0].dag())
+
+    return(JD_super)
+
+def chop(expr, *, max=10**(-10)):
+    return [i if i > max else 0 for i in expr]
+
+
+def overlaps_in_efficiciency(parameters):
+    L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
+    cops=get_c_ops(parameters)
+    JD_super =  get_current_super_op(parameters)
+    LRes=eigensystem_LR(L)
+    vec_id=operator_to_vector(identity([2,2,3,2]))
+    overlaps=[]
+    for i in range(len(LRes)):
+        overlap=vec_id.trans()@JD_super@LRes[i][2] * LRes[i][1].trans()@init
+        overlaps.append([overlap])
+    return(overlaps)
