@@ -257,8 +257,9 @@ def machine_efficiency(parameters):
         return(effic)
 
 def L_first_gap(L):
-    eigenen=np.sort(np.array(L.eigenenergies()))
-    return(eigenen[1]-eigenen[0])
+    eigenen=np.array(L.eigenenergies())
+    return(np.real(eigenen[-1]-eigenen[-2]))
+
 
 
 def efficiency(result):
@@ -637,7 +638,10 @@ def generate_dataset_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(sample_set,filename_sa
         steady=steadystate(H,c_ops)
         init=operator_to_vector(tensor(ptrace(steady,[0,1,2]),matrix_element(1,1,2)))
 
-        FOM_vals = L_get_all_figures_of_merit(drinv,init,steady,e_ops,parameters)  # Evaluate function
+        if parameters["first_gap_flag"]==True:
+            FOM_vals = L_get_all_figures_of_merit(drinv,init,steady,e_ops,parameters,L=l)  # Evaluate function
+        else:
+            FOM_vals = L_get_all_figures_of_merit(drinv,init,steady,e_ops,parameters)  # Evaluate function
         FOM_LHC_sampling=pd.concat([FOM_LHC_sampling, FOM_vals])
 
     FOM_LHC_sampling.reset_index(drop=True, inplace=True)
@@ -1054,7 +1058,6 @@ def get_current_super_op(parameters):
 
 def chop(expr, *, max=10**(-10)):
     return [i if i > max else 0 for i in expr]
-
 
 def overlaps_in_efficiciency(parameters):
     L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
