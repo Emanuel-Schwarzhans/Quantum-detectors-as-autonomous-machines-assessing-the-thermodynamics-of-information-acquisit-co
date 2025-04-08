@@ -998,15 +998,27 @@ def chop(matrix, threshold=1e-10):
         numpy.ndarray or Qobj: The modified matrix with small elements set to 0.
     """
     if isinstance(matrix, Qobj):
-        # If it's a Qobj, apply chop to its data and return a new Qobj
+        # If it's a Qobj, apply chop to its real and imaginary parts separately
         chopped_data = np.array(matrix.full())
-        chopped_data[np.abs(chopped_data) < threshold] = 0
+        real_part = np.real(chopped_data)
+        imag_part = np.imag(chopped_data)
+        real_part[np.abs(real_part) < threshold] = 0
+        imag_part[np.abs(imag_part) < threshold] = 0
+        chopped_data = real_part + 1j * imag_part
         return Qobj(chopped_data, dims=matrix.dims)
-    else:
-        # If it's a numpy array, apply chop directly
-        matrix = np.array(matrix)  # Ensure input is a numpy array
-        matrix[np.abs(matrix) < threshold] = 0
-        return matrix
+    elif np.isscalar(matrix):
+        # If it's a scalar (real or complex), return it as is
+        if matrix < threshold:
+            return 0
+        else:
+            return matrix
+    elif np.iscomplexobj(matrix):
+        # If it's a complex object, apply chop to both real and imaginary parts
+        real_part = np.real(matrix)
+        imag_part = np.imag(matrix)
+        real_part[np.abs(real_part) < threshold] = 0
+        imag_part[np.abs(imag_part) < threshold] = 0
+        return real_part + 1j * imag_part
 
 
 def find_largest_overlap_qutip(list1, list2):
