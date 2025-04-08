@@ -1068,8 +1068,7 @@ def get_current_super_op(parameters):
 
     return(JD_super)
 
-def chop(expr, *, max=10**(-10)):
-    return [i if i > max else 0 for i in expr]
+
 
 def overlaps_in_efficiciency(parameters):
     L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
