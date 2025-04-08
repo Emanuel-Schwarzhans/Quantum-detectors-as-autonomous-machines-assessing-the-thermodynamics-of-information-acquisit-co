@@ -71,12 +71,7 @@ def matrizise_vector(vec):
     n = int(np.sqrt(len(vec)))
     return np.array([[vec[i * n + j] for j in range(n)] for i in range(n)])
 
-#chop does not yet work perfectly
-def chop(matrix, threshold):
-    # Set values below the threshold to zero
-    result_matrix = np.where(matrix < threshold, 0, matrix)
 
-    return result_matrix
 
 def nth_level_destroy(n,d):
     # Create the basis state corresponding to the n-th level
