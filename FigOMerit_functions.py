@@ -1082,6 +1082,17 @@ def overlaps_in_efficiciency(parameters):
         overlaps.append(overlap)
     return(overlaps)
 
+def overlaps_eigvals_in_efficiciency(parameters):
+    L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
+    cops=get_c_ops(parameters)
+    JD_super =  get_current_super_op(parameters)
+    LRes=eigensystem_LR(L)
+    vec_id=operator_to_vector(identity([2,2,3,2]))
+    overlaps=[]
+    for i in range(len(LRes)):
+        overlap=vec_id.trans()@JD_super@LRes[i][2] * LRes[i][1].trans()@init
+        overlaps.append([overlap,LRes[i][0]])
+    return(overlaps)
 
 def reduce_list_to_real_values(list, epsilon=1e-10):
     list_copy= list.copy()
