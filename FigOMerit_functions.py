@@ -1079,5 +1079,5 @@ def overlaps_in_efficiciency(parameters):
     overlaps=[]
     for i in range(len(LRes)):
         overlap=vec_id.trans()@JD_super@LRes[i][2] * LRes[i][1].trans()@init
-        overlaps.append([overlap])
+        overlaps.append(overlap)
     return(overlaps)
