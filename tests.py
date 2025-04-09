@@ -66,7 +66,7 @@ def test_overlaps_in_efficiciency(default_parameters):
     L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
     LRes=eigensystem_LR(L)
     overlaps=overlaps_in_efficiciency(parameters)
-    overlaps_effic=-np.sum([overlaps[i][0]/(LRes[i][0]) for i in range(len(LRes)-1)])
+    overlaps_effic=-np.sum([overlaps[i]/(LRes[i][0]) for i in range(len(LRes)-1)])
     L_effic=L_efficiency(DI,init,get_e_ops(parameters),parameters)
     assert((np.real(overlaps_effic)-np.real(L_effic))<1e-8)
 
@@ -76,3 +76,11 @@ def test_overlaps_in_efficiciency(default_parameters):
 #     L_eig_FG=L.eigenenergies()[-2]-L.eigenenergies()[-2]
 #     FG=L_first_gap
 #     assert(np.abs(L_eig_FG-FG)<1e-8)
+
+
+def test_reduce_list_to_real_values():
+    list1=[1+0j, 2+3j, 2-3j, 0.5+0j, 0.5-1j,0.5+1j, 0.2-0j]
+    list2=[1+0j, 2+3j, 2-2j]
+    assert(reduce_list_to_real_values(list1) == [(1+0j), (4+0j),(0.5+0j), (1+0j), (0.2+0j)])
+    with pytest.raises(ValueError):
+        reduce_list_to_real_values(list2)
