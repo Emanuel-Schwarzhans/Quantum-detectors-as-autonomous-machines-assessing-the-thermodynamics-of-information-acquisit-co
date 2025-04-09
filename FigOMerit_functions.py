@@ -1070,7 +1070,7 @@ def get_current_super_op(parameters):
 
 
 
-def overlaps_in_efficiciency(parameters):
+def overlaps_in_efficiency(parameters):
     L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
     cops=get_c_ops(parameters)
     JD_super =  get_current_super_op(parameters)
@@ -1082,7 +1082,7 @@ def overlaps_in_efficiciency(parameters):
         overlaps.append(overlap)
     return(overlaps)
 
-def overlaps_eigvals_in_efficiciency(parameters):
+def overlaps_eigvals_in_efficiency(parameters):
     L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
     cops=get_c_ops(parameters)
     JD_super =  get_current_super_op(parameters)
