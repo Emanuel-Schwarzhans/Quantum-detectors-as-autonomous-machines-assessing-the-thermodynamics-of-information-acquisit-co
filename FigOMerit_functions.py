@@ -1084,14 +1084,15 @@ def overlaps_in_efficiciency(parameters):
 
 
 def reduce_list_to_real_values(list, epsilon=1e-10):
+    list_copy= list.copy()
     real_values = []
-    for el in list:
+    for el in list_copy:
         if np.abs(np.imag(el)) < epsilon:
             real_values.append(el)
         else:
-            index = next((j for j, element in enumerate(list) if np.abs(el - np.conj(element)) < epsilon), None)
+            index = next((j for j, element in enumerate(list_copy) if np.abs(el - np.conj(element)) < epsilon), None)
             if index is None:
                 raise ValueError("This list cannot be cast into a list of real values")
-            real_values.append(el+list[index])
-            list.pop(index) # remove that element to not count twice
+            real_values.append(el + list_copy[index])
+            list_copy.pop(index)  # remove that element to not count twice
     return real_values
