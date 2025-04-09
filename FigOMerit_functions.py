@@ -63,74 +63,6 @@ def get_dynamics_k_new(parameters):
         H])                         #20
 
 
-def get_dynamics_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,g_sl,g_ml,d_l,t_f,t_steps,k):
-    # Total Hamiltonian
-    H=H0_k(e_s,e_l,e_C,d_l,k)+HI_k(g_sl,g_ml,d_l,k)
-
-    # Jump operators
-    c_ops=c_ops_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,d_l,k)
-
-
-    ### --- e_ops:######################################
-    # index     0                   1                   2               3               4                   5
-    # operator  detect current      ladder-bath-curr    cold-m curr     hot-m curr      ready-state pop     energy-curr ladder-bath
-    e_ready=tensor(identity(2),identity(2),matrix_element(k,k,d_l),identity(2))
-    e_energy_curr_ladder_bath=-Qobj(np.sum([c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[2][i]*
-                               (c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[0][i].dag()*c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[0][i]
-                                -c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[1][i].dag()*c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[1][i])
-                                for i in range(len(c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[0]))]))
-
-    e_ops=[Qobj(c_ops[2*i+1].dag()*c_ops[2*i+1]-c_ops[2*i].dag()*c_ops[2*i])  for i in range(int(len(c_ops)/2))] # all the currents
-    e_ops.append(e_ready)
-    e_ops.append(e_energy_curr_ladder_bath)
-    ####################################################
-
-
-    steady_prev_run=steadystate(H,c_ops)
-    psi0 = tensor(ptrace(steady_prev_run,[0,1,2]),matrix_element(1,1,2))
-    times = np.linspace(0., t_f, t_steps)
-
-    return([
-        mesolve(H,psi0,
-                tlist=times,
-                c_ops=c_ops,
-                e_ops=e_ops),       #0
-        steady_prev_run,            #1
-        e_ops,                      #2
-        c_ops,                      #3
-        t_f,                        #4
-        t_steps,                    #5
-        rateM,                      #6
-        rateB,                      #7
-        rateD,                      #8
-        TH,                         #9
-        TC,                         #10
-        Tb,                         #11
-        Td,                         #12
-        e_s,                        #13
-        e_C,                        #14
-        e_l,                        #15
-        g_sl,                       #16
-        g_ml,                       #17
-        d_l,                        #18
-        k,                          #19
-        H])                         #20
-
-
-#######################
-# In the following result should be given as the output of get_dynamics or get_dynamics_k
-#######################
-# def efficiency(result):
-#     steady_prev_run=result[1]
-#     t_f=result[4]
-#     t_steps=result[5]
-#     result_data=result[0]
-#     noise_floor_curr=expect(result[2][0],steady_prev_run)
-#     # noise_floor_waste=expect(result[2][-1],steady_prev_run)
-#     # return(np.sum((result_data.expect[0]-noise_floor_curr)*t_f/t_steps)/(np.sum((result_data.expect[0]-noise_floor_curr)*t_f/t_steps)+np.sum((result_data.expect[-1]-noise_floor_waste)*t_f/t_steps)))
-#     return(np.trapz(np.array(result_data.expect[0]),dx=t_f/t_steps)-t_f*noise_floor_curr) # this is equalt to the total number of excess jumps in the detector channel
-
-
 ####get_e_ops returns exp operators####
 def get_e_ops(parameters):
     c_ops=get_c_ops(parameters)
@@ -261,71 +193,9 @@ def L_first_gap(L):
     return(np.real(eigenen[-1]-eigenen[-2]))
 
 
-
-def efficiency(result):
-    # Superoperator to be converted to supermatrix representation. If q_oper is type="oper", then it is taken to act by conjugation, such that to_super(A) == sprepost(A, A.dag()).
-    steady_prev_run=result[1]
-    init_state=operator_to_vector(tensor(ptrace(steady_prev_run,[0,1,2]),matrix_element(1,1,2))) # initialising in the conditional "photon is there" state
-    result_data=result[0]
-    H=result[20]
-    c_ops=result[3]
-    l=liouvillian(H,c_ops)
-    e_ops_current=result[2][0]
-    Lrho=vector_to_operator(pseudo_inverse(liouvillian(H,c_ops),method="spsolve")*init_state)
-    effic=-(e_ops_current*Lrho).tr()
-    return(effic)
-
-
-
-def dark_counts(result):
-    return(expect(result[2][0],result[1]))
-
-
-def entropy_production(result):
-    TC=result[10]
-    e_C=result[14]
-    t_f=result[4]
-    t_steps=result[5]
-    entropy_dynamics=(result[0].expect[5]+result[0].expect[2]*e_C)/TC
-    entropyrate=entropy_steady_rate(result)
-    return(np.trapz(np.array(entropy_dynamics),dx=t_f/t_steps)-t_f*entropyrate) # this is equalt to the total number of excess jumps in the detector channel
-
-def entropy_steady_rate(result):
-    TC=result[10]
-    e_C=result[14]
-    steady_prev_run=result[1]
-    return(expect(result[2][2]*e_C+result[2][5],steady_prev_run)/TC)
-
-
-def jitter(result): # Keep in mind that this is the variance (often FWHM is used, which I might want to consider as well, though its related)
-    result_data=result[0]
-    t_f=result[4]
-    t_steps=result[5]
-    steady_prev_run=result[1]
-    noise_floor_curr=expect(result[2][0],steady_prev_run)
-    normalize=np.sum((result_data.expect[0]-noise_floor_curr)*t_f/t_steps)
-    t=np.linspace(0,t_f,t_steps)
-    expt=np.trapz(t*np.array((result[0].expect[0]-noise_floor_curr)/normalize),t)
-    expt2=np.trapz(t**2*np.array((result[0].expect[0]-noise_floor_curr)/normalize),t)
-    return(np.sqrt(expt2-expt**2))
-
 def get_parameterlist(result):
     outstring=["mesolve(H,psi0, tlist=times,c_ops=c_ops, e_ops=e_ops)","steady_prev_run","e_ops","c_ops","t_f","t_steps","rateM","rateB","rateD","TH","TC","Tb","Td","e_s","e_C","e_l","d_l","TV","k"]
     return([[outstring[x],result[x]] for x in range(4,len(result))])
-
-def get_all_figures_of_merit(result): #returns list of [efficiency, dark count rate, jitter, entropy production,...] input is
-    TC=result[10]
-    TH=result[9]
-    e_C=result[14]
-    e_l=result[15]
-    TV=e_l/((e_l+e_C)/TH-e_C/TC)
-    effic=efficiency(result)
-    darc=dark_counts(result)
-    jitt=jitter(result)
-    ent=entropy_production(result)
-    ent_rate=entropy_steady_rate(result)
-    return([effic,darc,jitt,ent,ent_rate,result[4],result[5],result[6],result[7],result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],result[16],result[17],result[18],TV,result[19]])
-
 
 def L_get_all_figures_of_merit(DrazInv,init_state,steady_state,e_ops,parameters,L=None): #returns list of [efficiency, dark count rate, jitter, entropy production,...] input is
     effic=L_efficiency(DrazInv,init_state,e_ops,parameters)
@@ -350,32 +220,6 @@ def L_get_all_figures_of_merit(DrazInv,init_state,steady_state,e_ops,parameters,
     # return([effic,darc,jitt,ent,ent_rate,result[4],result[5],result[6],result[7],result[8],result[9],result[10],result[11],result[12],result[13],result[14],result[15],result[16],result[17],result[18],TV,result[19]])
     return(output_df)
 
-def out_index(el_str): #Outputs a dictionary relating entries of get_all_figures_of_merit to its indices
-    list=["efficiency",
-         "dark count rate",
-         "jitter",
-         "entropy production",
-         "entropy rate",
-         "t_f",
-         "t_steps",
-         "rateM",
-         "rateB",
-         "rateD",
-         "TH",
-         "TC",
-         "Tb",
-         "Td",
-         "e_s",
-         "e_C",
-         "e_l",
-         "g_sl",
-         "g_ml",
-         "d_l",
-         "TV",
-         "k"
-    ]
-    return(list.index(el_str))
-
 
 def TH_from_TV_TC(TV,TC,e_C,e_L):
         # Handle division by zero using numpy where
@@ -386,84 +230,6 @@ def TH_from_TV_TC(TV,TC,e_C,e_L):
 def TV_from_TH_TC(TH,TC,e_C,e_L):
     e_H=e_L+e_C
     return(e_L/(e_H/TH-e_C/TC))
-
-#Input is the output of get_all_figures_of_merit
-#output is a list with the same structure but without the elements that have non-negative virtual temperature
-def neg_virt_temp_filter(datalist):
-    filtered_list = [[inner for inner in outer
-                      if get_virtual_temp(inner[out_index("TH")],inner[out_index("TC")],inner[out_index("e_s")],inner[out_index("e_C")])<0]
-                      for outer in datalist]
-    return(filtered_list)
-
-
-
-
-def generate_sample_set_d_TC_TV_RB(d_range,R_B_range,T_C_range,T_V_range,e_s,e_C_factor,e_max,sample_size):
-    #Generate samples of variables
-
-    filtered_samples=[]
-
-    while len(filtered_samples) < sample_size:
-        sampler=LatinHypercube(4)
-        samples=np.array(sampler.random(n=50))
-        #scale d and make d integers
-        d_scaled_samples=np.floor(scale(samples,[d_range[0]],[d_range[1]+1])).astype(int)[:,0]
-
-        #scale other variables
-        RB_TH_TC_scaled_samples = scale(samples[:,1:], [R_B_range[0],T_C_range[0],T_V_range[0]],[R_B_range[1],T_C_range[1],T_V_range[1]])
-
-        #re-combine dimension samples with other variable samples
-        scaled_samples=np.column_stack((d_scaled_samples,RB_TH_TC_scaled_samples))
-
-        #implementing sampling constraint for temperature
-        T_C = scaled_samples[:, 2]
-        T_V = scaled_samples[:, 3]
-        d_l=scaled_samples[:,0]
-        e_l=(-e_s+e_max)/(d_l-2)
-        e_C=e_C_factor*e_l
-
-        T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
-        valid_samples = scaled_samples[T_H >= 0]
-
-        # Add valid samples to the filtered list
-        filtered_samples.extend(valid_samples)
-        if len(filtered_samples) > sample_size:
-            filtered_samples = filtered_samples[:sample_size]
-    return(filtered_samples)
-
-def generate_sample_set_d_TC_TV(d_range,T_C_range,T_V_range,e_s,e_C_factor,e_max,d_l,sample_size):
-    #Generate samples of variables
-    sampler=LatinHypercube(3)
-    filtered_samples=[]
-    samples=np.array(sampler.random(n=50))
-
-    while len(filtered_samples) < sample_size:
-        sampler=LatinHypercube(3)
-        samples=np.array(sampler.random(n=50))
-
-        #scale d and make d integers
-        d_scaled_samples=np.floor(scale(samples,[d_range[0]],[d_range[1]+1])).astype(int)[:,0]
-
-        #scale other variables
-        RB_TH_TC_scaled_samples = scale(samples[:,1:], [T_C_range[0],T_V_range[0]],[T_C_range[1],T_V_range[1]])
-
-        #re-combine dimension samples with other variable samples
-        scaled_samples=np.column_stack((d_scaled_samples,RB_TH_TC_scaled_samples))
-
-        #implementing sampling constraint for temperature
-        T_C = scaled_samples[:, 1]
-        T_V = scaled_samples[:, 2]
-        e_l=(-e_s+e_max)/(d_l-2)
-        e_C=e_C_factor*e_l
-
-        T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
-        valid_samples = scaled_samples[T_H >= 0]
-
-        # Add valid samples to the filtered list
-        filtered_samples.extend(valid_samples)
-        if len(filtered_samples) > sample_size:
-            filtered_samples = filtered_samples[:sample_size]
-    return(filtered_samples)
 
 
 def generate_sample_set_TC_MaxTV_g_ml_rateD(T_C_range,g_ml_range,rateD_range,parameters,sample_size):
@@ -527,36 +293,6 @@ def generate_sample_set_TC_MaxTV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,g_ml_r
             filtered_samples = filtered_samples[:sample_size]
     return(filtered_samples)
 
-def generate_sample_set_TC_TV_g_ml_rateD(T_C_range,T_V_range,g_ml_range,rateD_range,parameters,sample_size):
-    #Generate samples of variables TC, TV, g_ml, g_ld
-
-    filtered_samples=[]
-
-    while len(filtered_samples) < sample_size:
-        sampler=LatinHypercube(4)
-        samples=np.array(sampler.random(n=50))# 50 is just a number big enough to have a good set to filter from while not taking too long an overshooting too much
-
-
-        #scale other variables
-        scaled_samples = scale(samples, [T_C_range[0],T_V_range[0],g_ml_range[0],rateD_range[0]],
-                               [T_C_range[1],T_V_range[1],g_ml_range[1],rateD_range[1]])
-
-        #implementing sampling constraint for temperature
-        T_C = scaled_samples[:, 0]
-        T_V = scaled_samples[:, 1]
-        d_l=parameters["d_l"]
-        e_l=(parameters["e_max"]-parameters["e_s"])/(d_l-2)
-        e_C=parameters["e_C_factor"]*e_l
-
-        T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
-        valid_samples = scaled_samples[T_H >= T_C*(e_l+e_C)/e_C]
-
-        # Add valid samples to the filtered list
-        filtered_samples.extend(valid_samples)
-        if len(filtered_samples) > sample_size:
-            filtered_samples = filtered_samples[:sample_size]
-    return(filtered_samples)
-
 
 def generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,T_V_range,g_ml_range,g_sl_range,rateD_range,e_C_factor_range,rateM_range,parameters,sample_size):
     #Generate samples of variables TC, TV, g_ml, g_ld
@@ -587,12 +323,6 @@ def generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,T_V_range
         if len(filtered_samples) > sample_size:
             filtered_samples = filtered_samples[:sample_size]
     return(filtered_samples)
-
-def safe_qload(filename):
-    if os.path.exists(filename + '.qu'):
-        return qload(filename)
-    else:
-        return []
 
 def generate_dataset_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(sample_set,filename_save_load,parameters):
     try:
@@ -759,41 +489,6 @@ def generate_dataset_TC_MaxTV_g_ml_g_sl_rateD_eCfactor_rateM(sample_set,filename
 
     FOM_LHC_sampling.reset_index(drop=True, inplace=True)
     FOM_LHC_sampling.to_csv(filename_save_load,index=False)
-    return(FOM_LHC_sampling)
-
-
-
-
-def generate_dataset_d_TC_TV(sample_set,filename_save_load,rateM,rateB,rateD,e_s,e_C_factor,e_max,g_sl,g_ml,t_f,t_steps,k):
-    FOM_LHC_sampling=safe_qload(filename_save_load)
-    for sample in sample_set:
-        d_l,TC,TV = sample  # Unpack parameters
-        Tb=TC
-        Td=TC
-        d_l=int(d_l)
-        e_l=(e_max-e_s)/(d_l-2)
-        TH=TH_from_TV_TC(TV,TC,e_l*e_C_factor,e_l)
-        FOM_vals = get_all_figures_of_merit(get_dynamics_k(
-            rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C_factor*e_l,e_l,g_sl,g_ml,d_l,t_f,t_steps,k))  # Evaluate function
-        FOM_LHC_sampling.append(FOM_vals)
-    qsave(FOM_LHC_sampling,filename_save_load)
-    return(FOM_LHC_sampling)
-
-
-def generate_dataset_d_TC_TV_RB(sample_set,filename_save_load,rateM,rateD,e_s,e_C_factor,e_max,g_sl,g_ml,t_f,t_steps,k):
-    FOM_LHC_sampling=safe_qload(filename_save_load)
-
-    for sample in sample_set:
-        d_l,rateB,TC,TV = sample  # Unpack parameters
-        Tb=TC
-        Td=TC
-        d_l=int(d_l)
-        e_l=(e_max-e_s)/(d_l-2)
-        TH=TH_from_TV_TC(TV,TC,e_l*e_C_factor,e_l)
-        FOM_vals = get_all_figures_of_merit(get_dynamics_k(
-            rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C_factor*e_l,e_l,g_sl,g_ml,d_l,t_f,t_steps,k))  # Evaluate function
-        FOM_LHC_sampling.append(FOM_vals)
-    qsave(FOM_LHC_sampling,filename_save_load)
     return(FOM_LHC_sampling)
 
 
@@ -1069,19 +764,6 @@ def get_current_super_op(parameters):
     return(JD_super)
 
 
-
-def overlaps_in_efficiency(parameters):
-    L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
-    cops=get_c_ops(parameters)
-    JD_super =  get_current_super_op(parameters)
-    LRes=eigensystem_LR(L)
-    vec_id=operator_to_vector(identity([2,2,3,2]))
-    overlaps=[]
-    for i in range(len(LRes)):
-        overlap=vec_id.trans()@JD_super@LRes[i][2] * LRes[i][1].trans()@init
-        overlaps.append(overlap)
-    return(overlaps)
-
 def overlaps_eigvals_in_efficiency(parameters):
     L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
     cops=get_c_ops(parameters)
@@ -1094,6 +776,8 @@ def overlaps_eigvals_in_efficiency(parameters):
         overlaps.append([overlap,LRes[i][0]])
     return(overlaps)
 
+
+#takes a list of complex numbers and returns a list of real numbers by summing elements that are complex cojugates and keeping real elements
 def reduce_list_to_real_values(list, epsilon=1e-10):
     list_copy= list.copy()
     real_values = []

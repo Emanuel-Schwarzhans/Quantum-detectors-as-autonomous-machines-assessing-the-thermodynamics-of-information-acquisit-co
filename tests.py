@@ -61,15 +61,6 @@ def test_get_current_super_op(default_parameters):
     vec_ident=operator_to_vector(ident)
     assert(vec_ident.trans()@JD_super@operator_to_vector(steady)==(JD@steady).tr())
 
-def test_overlaps_in_efficiency(default_parameters):
-    parameters=default_parameters
-    L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
-    LRes=eigensystem_LR(L)
-    overlaps=overlaps_in_efficiency(parameters)
-    overlaps_effic=-np.sum([overlaps[i]/(LRes[i][0]) for i in range(len(LRes)-1)])
-    L_effic=L_efficiency(DI,init,get_e_ops(parameters),parameters)
-    assert((np.real(overlaps_effic)-np.real(L_effic))<1e-8)
-
 
 def test_overlaps_eigvals_in_efficiency(default_parameters):
     parameters=default_parameters
