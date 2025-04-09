@@ -71,6 +71,14 @@ def test_overlaps_in_efficiency(default_parameters):
     assert((np.real(overlaps_effic)-np.real(L_effic))<1e-8)
 
 
+def test_overlaps_eigvals_in_efficiency(default_parameters):
+    parameters=default_parameters
+    L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
+    overlaps=overlaps_eigvals_in_efficiency(parameters)
+    overlaps_effic=-np.sum([overlaps[i][0]/(overlaps[i][1]) for i in range(len(overlaps)-1)])
+    L_effic=L_efficiency(DI,init,get_e_ops(parameters),parameters)
+    assert((np.real(overlaps_effic)-np.real(L_effic))<1e-8)
+
 # def test_L_first_gap():
 #     L=liouvillian(Qobj([[0,0],[0,1]]),c_ops=Qobj([[0,1],[0,0]]))
 #     L_eig_FG=L.eigenenergies()[-2]-L.eigenenergies()[-2]
