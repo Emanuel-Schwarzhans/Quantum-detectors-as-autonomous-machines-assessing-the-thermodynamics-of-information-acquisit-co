@@ -491,6 +491,37 @@ def generate_dataset_TC_MaxTV_g_ml_g_sl_rateD_eCfactor_rateM(sample_set,filename
     FOM_LHC_sampling.to_csv(filename_save_load,index=False)
     return(FOM_LHC_sampling)
 
+def loop_dataset_generation(rateD_range,g_ml_range,g_sl_range,T_C_range,T_V_range,e_C_factor_range,rateM_range,parameters,filename,N_loops=100,loop_size=10,error_cap=100):
+    n=0
+    errors=0
+
+    while n < N_loops:
+        try:
+            # Generate sample set
+            sample_set = np.array(generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(
+                T_C_range, T_V_range,g_ml_range, g_sl_range, rateD_range, e_C_factor_range, rateM_range, parameters, loop_size))
+
+            # Generate dataset
+            dset = generate_dataset_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(sample_set, filename, parameters)
+
+            print(f"Sample set no. {n}, dataset size {np.array(dset).shape}", end="\r", flush=True)
+            n += 1  # Increment only on success
+
+        except (ValueError, RuntimeError) as e:
+            errors += 1
+            print(f"Error encountered: {type(e).__name__}: {e}. ..................(total errors: {errors})", end="\r", flush=True)
+        except Exception as e:
+            errors += 1
+            print(f"Unexpected error encountered: {type(e).__name__}: {e}. ..................(total errors: {errors})", end="\r", flush=True)
+
+        if errors > error_cap:
+            print("\nToo many errors, stopping execution.")
+            break
+
+    if errors > 0:
+        print(f"\nCompleted with {errors} errors during execution.")
+    else:
+        print("\nExecution completed without errors.")
 
 
 
