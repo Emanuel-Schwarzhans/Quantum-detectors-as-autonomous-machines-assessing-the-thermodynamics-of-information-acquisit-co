@@ -810,7 +810,7 @@ def overlaps_eigvals_in_efficiency(parameters):
 
 #takes a list of complex numbers and returns a list of real numbers by summing elements that are complex cojugates and keeping real elements
 def reduce_list_to_real_values(list, epsilon=1e-10):
-    list_copy= list.copy()
+    list_copy= list(list.copy())
     real_values = []
     for el in list_copy:
         if np.abs(np.imag(el)) < epsilon:
