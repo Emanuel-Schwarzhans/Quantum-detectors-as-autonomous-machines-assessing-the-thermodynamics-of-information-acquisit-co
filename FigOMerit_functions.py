@@ -807,6 +807,19 @@ def overlaps_eigvals_in_efficiency(parameters):
         overlaps.append([overlap,LRes[i][0]])
     return(overlaps)
 
+def overlaps_eigvals_list_in_efficiency(parameters): # output eigval, left part of overlap, right part of overlap
+    L, DI, init, steady = get_L_Draz_Init_Steady(parameters)
+    cops=get_c_ops(parameters)
+    JD_super =  get_current_super_op(parameters)
+    LRes=eigensystem_LR(L)
+    vec_id=operator_to_vector(identity([2,2,3,2]))
+    overlaps=[]
+    for i in range(len(LRes)):
+        overlap_L=vec_id.trans()@JD_super@LRes[i][2]
+        overlap_R=LRes[i][1].trans()@init
+        overlaps.append([LRes[i][0],overlap_L,overlap_R])
+    return(overlaps)
+
 
 #takes a list of complex numbers and returns a list of real numbers by summing elements that are complex cojugates and keeping real elements
 def reduce_list_to_real_values(list, epsilon=1e-10):
