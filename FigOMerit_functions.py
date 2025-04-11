@@ -294,6 +294,16 @@ def generate_sample_set_TC_MaxTV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,g_ml_r
     return(filtered_samples)
 
 
+def scew_sample(range,sample,scew_factor):
+    #takes a sample that is distributed linearly and scews the distribution, scewfactor >1 is more small values, <1 is more big values
+    target_min=range[0]
+    target_max=range[1]
+    skewed = sample ** scew_factor
+    values = 10 ** skewed  # logarithmic skewed values
+    # Rescale to [target_min, target_max]
+    rescaled = target_min + (target_max - target_min) * (values - values.min()) / (values.max() - values.min())
+    return(rescaled)
+
 def generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,T_V_range,g_ml_range,g_sl_range,rateD_range,e_C_factor_range,rateM_range,parameters,sample_size):
     #Generate samples of variables TC, TV, g_ml, g_ld
 
