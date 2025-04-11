@@ -42,7 +42,7 @@ def main():
     parameters["first_gap_flag"]=True
 
 
-    filename="Dante_Scatter_plots_v1.csv"
+    filename="./Output/Dante_Scatter_plots_v1.csv"
 
     parameters["Max_TV_flag"]=False
     parameters["first_gap_flag"]=True
