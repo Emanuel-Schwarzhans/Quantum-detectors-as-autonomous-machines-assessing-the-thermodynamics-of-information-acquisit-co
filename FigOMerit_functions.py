@@ -309,30 +309,31 @@ def generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,T_V_range
 
     filtered_samples=[]
 
-    while len(filtered_samples) < sample_size:
-        sampler=LatinHypercube(7)
-        samples=np.array(sampler.random(n=50))# 50 is just a number big enough to have a good set to filter from while not taking too long an overshooting too much
+    sampler=LatinHypercube(7)
+    samples=np.array(sampler.random(n=sample_size))# 50 is just a number big enough to have a good set to filter from while not taking too long an overshooting too much
 
-        #scale other variables
-        scaled_samples = scale(samples, [T_C_range[0],T_V_range[0],g_ml_range[0],g_sl_range[0],rateD_range[0],e_C_factor_range[0],rateM_range[0]],
-                               [T_C_range[1],T_V_range[1],g_ml_range[1],g_sl_range[1],rateD_range[1],e_C_factor_range[1],rateM_range[1]])
+    if "scew_flag_TC" in parameters and parameters["scew_flag_TC"]:
+        samples[:, 0] = scew_sample([0,1], samples[:, 0], parameters["scew_factor_TC"])
+    scaled_samples = scale(samples, [T_C_range[0],T_V_range[0],g_ml_range[0],g_sl_range[0],rateD_range[0],e_C_factor_range[0],rateM_range[0]],
+                            [T_C_range[1],T_V_range[1],g_ml_range[1],g_sl_range[1],rateD_range[1],e_C_factor_range[1],rateM_range[1]])
 
-        #implementing sampling constraint for temperature
-        T_C = scaled_samples[:, 0]
-        T_V = scaled_samples[:, 1]
-        e_C_factor=scaled_samples[:,4]
-        d_l=parameters["d_l"]
-        e_l=(parameters["e_max"]-parameters["e_s"])/(d_l-2)
-        e_C=e_C_factor*e_l
-        T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
 
-        valid_samples = scaled_samples[T_H >= T_C*(e_l+e_C)/e_C]
+    #implementing sampling constraint for temperature
+    T_C = scaled_samples[:, 0]
+    T_V = scaled_samples[:, 1]
+    e_C_factor=scaled_samples[:,4]
+    d_l=parameters["d_l"]
+    e_l=(parameters["e_max"]-parameters["e_s"])/(d_l-2)
+    e_C=e_C_factor*e_l
+    T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
 
-        # Add valid samples to the filtered list
-        filtered_samples.extend(valid_samples)
-        if len(filtered_samples) > sample_size:
-            filtered_samples = filtered_samples[:sample_size]
+    # valid_samples = scaled_samples[T_H >= T_C*(e_l+e_C)/e_C]
+    valid_samples = scaled_samples[T_V <= -T_C*e_l/e_C]
+
+    # Add valid samples to the filtered list
+    filtered_samples.extend(valid_samples)
     return(filtered_samples)
+
 
 def generate_dataset_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(sample_set,filename_save_load,parameters):
     try:
