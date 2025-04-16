@@ -83,3 +83,16 @@ def test_reduce_list_to_real_values():
     assert(reduce_list_to_real_values(list1) == [(1+0j), (4+0j),(0.5+0j), (1+0j), (0.2+0j)])
     with pytest.raises(ValueError):
         reduce_list_to_real_values(list2)
+
+def test_generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(default_parameters):
+    sample_set=generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM([0,2],[-10,0],[0,2],[0,2],[0,2],[0,2],[0,2],default_parameters,10000)
+    T_C = np.array(sample_set)[:,0]
+    T_V = np.array(sample_set)[:,1]
+    e_C_factor=np.array(sample_set)[:,4]
+    d_l=default_parameters["d_l"]
+    e_l=(default_parameters["e_max"]-default_parameters["e_s"])/(d_l-2)
+    e_C=e_C_factor*e_l
+    T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
+    assert(all(np.array(sample_set)[:,0]>0))
+    assert(all(np.array(sample_set)[:,1]<0))
+    assert(all(np.array(T_H)>0))
