@@ -329,7 +329,7 @@ def generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,T_V_range
 
 
     # valid_samples = scaled_samples[T_H >= T_C*(e_l+e_C)/e_C]
-    valid_samples = scaled_samples[T_V <= -T_C*e_l/e_C]
+    valid_samples = scaled_samples[T_V <= -T_C*e_l/e_C] # This implies that TH>=0, see calculations in notebook at page 36
 
     # Add valid samples to the filtered list
     filtered_samples.extend(valid_samples)
