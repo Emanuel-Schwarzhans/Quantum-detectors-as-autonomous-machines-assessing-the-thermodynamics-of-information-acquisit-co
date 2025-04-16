@@ -42,10 +42,14 @@ def main():
     parameters["first_gap_flag"]=True
 
 
-    filename="./Output/Dante_Scatter_plots_v1.csv"
+    # filename="./Output/Dante_Scatter_plots_v2.csv"
+    filename="test.csv"
 
     parameters["Max_TV_flag"]=False
     parameters["first_gap_flag"]=True
+
+    parameters["scew_flag_TC"]=True
+    parameters["scew_factor_TC"]=2
 
     ## Generate dataset
 
@@ -57,8 +61,8 @@ def main():
                             e_C_factor_range,rateM_range,
                             parameters,
                             filename,
-                            N_loops=1,
-                            loop_size=10,
+                            N_loops=1000,
+                            loop_size=100,
                             error_cap=100)
 
 if __name__ == "__main__":
