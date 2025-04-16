@@ -325,7 +325,8 @@ def generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,T_V_range
     d_l=parameters["d_l"]
     e_l=(parameters["e_max"]-parameters["e_s"])/(d_l-2)
     e_C=e_C_factor*e_l
-    T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
+    # T_H=TH_from_TV_TC(T_V,T_C,e_C,e_l)
+
 
     # valid_samples = scaled_samples[T_H >= T_C*(e_l+e_C)/e_C]
     valid_samples = scaled_samples[T_V <= -T_C*e_l/e_C]
