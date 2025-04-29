@@ -35,11 +35,11 @@ def main():
     rateD_range=[0.1,2]
     g_ml_range=[0.1,2]
     g_sl_range=[0.1,2]
-    T_C_range=[0.05,2]
+    T_C_range=[0.05,0.2]
     T_V_range=[-20,-0]
     e_C_factor_range=[0.1,2]
     rateM_range=[0.1,2]
-    parameters["first_gap_flag"]=True
+    parameters["first_gap_flag"]=False
 
 
     # filename="./Output/Dante_Scatter_plots_v2.csv"
@@ -61,8 +61,8 @@ def main():
                             e_C_factor_range,rateM_range,
                             parameters,
                             filename,
-                            N_loops=1000,
-                            loop_size=100,
+                            N_loops=5,
+                            loop_size=10,
                             error_cap=100)
 
 if __name__ == "__main__":
