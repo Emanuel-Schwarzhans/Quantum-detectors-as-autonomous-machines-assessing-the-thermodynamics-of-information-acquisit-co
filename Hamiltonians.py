@@ -77,20 +77,18 @@ def c_ops_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_c,e_l,d_l,k): # d_l is the total
         RH_mi=np.sqrt(rateM*1/(1+np.exp(-1/TH*(e_c+e_l))))
 
     if Td==0:
-        c_out_curr_p=0*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
-        c_out_curr_m=np.sqrt(rateD)*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
+        c_out_curr_p=0*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2)) # detection channel plus
+        c_out_curr_m=np.sqrt(rateD)*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2)) # detection channel minus
     else:
-        c_out_curr_p=np.sqrt(rateD*np.exp(-(e_l*(d_l-2)+e_s)/Td))*tensor(identity(2),identity(2),matrix_element(d_l-1,0,d_l),identity(2))
-        c_out_curr_m=np.sqrt(rateD)*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
+        c_out_curr_p=np.sqrt(rateD*np.exp(-(e_l*(d_l-2)+e_s)/Td))*tensor(identity(2),identity(2),matrix_element(d_l-1,0,d_l),identity(2)) # detection channel plus
+        c_out_curr_m=np.sqrt(rateD)*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2)) # detection channel minus
 
-    c_c_p=RC_pl*tensor(matrix_element(1,0,2),identity(2),identity(d_l),identity(2))
-    c_c_m=RC_mi*tensor(matrix_element(0,1,2),identity(2),identity(d_l),identity(2))
-    c_h_p=RH_pl*tensor(identity(2),matrix_element(1,0,2),identity(d_l),identity(2))
-    c_h_m=RH_mi*tensor(identity(2),matrix_element(0,1,2),identity(d_l),identity(2))
-    c_b_p=Qobj(np.sum(c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[0]))
-    c_b_m=Qobj(np.sum(c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[1]))
-    # c_out_curr_p=rateD*np.exp(-(e_l*(d_l-2)+e_s)/Td)*tensor(identity(2),identity(2),matrix_element(d_l-1,0,d_l),identity(2))
-    # c_out_curr_m=rateD*tensor(identity(2),identity(2),matrix_element(0,d_l-1,d_l),identity(2))
+    c_c_p=RC_pl*tensor(matrix_element(1,0,2),identity(2),identity(d_l),identity(2)) # cold bit
+    c_c_m=RC_mi*tensor(matrix_element(0,1,2),identity(2),identity(d_l),identity(2)) # cold bit
+    c_h_p=RH_pl*tensor(identity(2),matrix_element(1,0,2),identity(d_l),identity(2)) # hot bit
+    c_h_m=RH_mi*tensor(identity(2),matrix_element(0,1,2),identity(d_l),identity(2)) # hot bit
+    c_b_p=Qobj(np.sum(c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[0])) # c_ops ladder plus
+    c_b_m=Qobj(np.sum(c_ops_ladder_list_k(rateB,Tb,e_s,e_l,d_l,k)[1])) # c_ops ladder minus
     return([c_out_curr_p,c_out_curr_m,c_b_p,c_b_m,c_c_p,c_c_m,c_h_p,c_h_m])
 
 def get_c_ops(parameters):
