@@ -81,44 +81,20 @@ def get_e_ops(parameters):
     ### --- e_ops:######################################
     # index     0                   1                   2               3               4                   5
     # operator  detect current      ladder-bath-curr    cold-m curr     hot-m curr      ready-state pop     energy-curr ladder-bath
-
+    c_ops_L=c_ops_ladder_list_k(parameters["rateB"],
+                        parameters["Tb"],
+                        parameters["e_s"],
+                        parameters["e_l"],
+                        parameters["d_l"],
+                        parameters["k"])
+  ### In the following [2] is the energy gap, [0] is the current going into the system and [1] is the current going out of the system
     e_ready=Qobj(tensor(identity(2),identity(2),matrix_element(parameters["k"],parameters["k"],parameters["d_l"]),identity(2)))
-    e_energy_curr_ladder_bath=-Qobj(np.sum([c_ops_ladder_list_k(parameters["rateB"],
-                                                                parameters["Tb"],
-                                                                parameters["e_s"],
-                                                                parameters["e_l"],
-                                                                parameters["d_l"],
-                                                                parameters["k"])[2][i]*
-                               (c_ops_ladder_list_k(parameters["rateB"],
-                                                    parameters["Tb"],
-                                                    parameters["e_s"],
-                                                    parameters["e_l"],
-                                                    parameters["d_l"],
-                                                    parameters["k"])[0][i].dag()
-                                *c_ops_ladder_list_k(parameters["rateB"],
-                                                     parameters["Tb"],
-                                                     parameters["e_s"],
-                                                     parameters["e_l"],
-                                                     parameters["d_l"],
-                                                     parameters["k"])[0][i]
-                                -c_ops_ladder_list_k(parameters["rateB"],
-                                                     parameters["Tb"],
-                                                     parameters["e_s"],
-                                                     parameters["e_l"],
-                                                     parameters["d_l"],
-                                                     parameters["k"])[1][i].dag()
-                                *c_ops_ladder_list_k(parameters["rateB"],
-                                                     parameters["Tb"],
-                                                     parameters["e_s"],
-                                                     parameters["e_l"],
-                                                     parameters["d_l"],
-                                                     parameters["k"])[1][i])
-                                for i in range(len(c_ops_ladder_list_k(parameters["rateB"],
-                                                                       parameters["Tb"],
-                                                                       parameters["e_s"],
-                                                                       parameters["e_l"],
-                                                                       parameters["d_l"],
-                                                                       parameters["k"])[0]))]))
+    e_energy_curr_ladder_bath=-Qobj(np.sum([c_ops_L[2][i]* ## This is positive if the current flows from the ladder to the bath
+                               (c_ops_L[0][i].dag()
+                                *c_ops_L[0][i] ## e.g. |0> <0| for the ladder-bath current
+                                -c_ops_L[1][i].dag()
+                                *c_ops_L[1][i]) ## e.g. |1> <1| for the ladder-bath current
+                                for i in range(len(c_ops_L[0]))]))
 
     e_ops=[Qobj(c_ops[2*i+1].dag()*c_ops[2*i+1]-c_ops[2*i].dag()*c_ops[2*i])  for i in range(int(len(c_ops)/2))] # all the currents
     e_ops.append(e_ready)
