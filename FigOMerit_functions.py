@@ -81,6 +81,7 @@ def get_e_ops(parameters):
     ### --- e_ops:######################################
     # index     0                   1                   2               3               4                   5
     # operator  detect current      ladder-bath-curr    cold-m curr     hot-m curr      ready-state pop     energy-curr ladder-bath
+
     e_ready=Qobj(tensor(identity(2),identity(2),matrix_element(parameters["k"],parameters["k"],parameters["d_l"]),identity(2)))
     e_energy_curr_ladder_bath=-Qobj(np.sum([c_ops_ladder_list_k(parameters["rateB"],
                                                                 parameters["Tb"],
@@ -144,7 +145,9 @@ def L_entropy_production(DrazInv,init_state,e_ops,parameters):
     else:
         EC=parameters["e_l"]*parameters["e_C_factor"]
         Lrho=vector_to_operator(DrazInv*init_state)
-        return(np.real(-1/TC*((e_ops[5]+EC*e_ops[2])*Lrho).tr()))
+        # return(np.real(-1/TC*((e_ops[5]+EC*e_ops[2])@Lrho).tr()))
+        return(np.real(-1/TC*((e_ops[5]+EC*e_ops[2]+(parameters["e_l"]+parameters["e_s"])*e_ops[0]+(parameters["e_l"]+EC)*e_ops[3])@Lrho).tr())) # all currents
+        # return(np.real(-1/TC*((e_ops[5]+EC*e_ops[2]+(parameters["e_l"]+EC)*e_ops[3])@Lrho).tr())) # all currents except detection
 
 def L_entropy_steady_rate(DrazInv,init_state,e_ops,parameters):
     TC=parameters["TC"]
@@ -153,7 +156,9 @@ def L_entropy_steady_rate(DrazInv,init_state,e_ops,parameters):
     else:
         e_C=parameters["e_l"]*parameters["e_C_factor"]
         steady_prev_run=init_state
-        return(expect(e_ops[2]*e_C+e_ops[5],steady_prev_run)/TC)
+        # return(expect(e_ops[2]*e_C+e_ops[5],steady_prev_run)/TC)
+        return(expect(e_ops[2]*e_C+e_ops[5]+(parameters["e_l"]+parameters["e_s"])*e_ops[0]+(parameters["e_l"]+e_C)*e_ops[3],steady_prev_run)/TC) #all currents
+        # return(expect(e_ops[2]*e_C+e_ops[5]+(parameters["e_l"]+e_C)*e_ops[3],steady_prev_run)/TC)  #all currents except detection
 
 def L_jitter(DrazInv,init_state,e_ops,parameters):
     e_ops_current=e_ops[0]
@@ -847,3 +852,19 @@ def reduce_list_to_real_values(list, epsilon=1e-10):
             real_values.append(el + list_copy[index])
             list_copy.pop(index)  # remove that element to not count twice
     return real_values
+
+
+
+def rate_eff_entropy (TC, rateB, rateD, e_l,e_s,parameters):
+    # returns the entropy production, efficiency hyptothesis only using coupling rates (wrong), actual efficiency
+    rate_eff=1/(1+rateB/rateD*(1+np.exp(-e_s/TC)/(1-np.exp(-(e_l+e_s)/TC))))
+
+    parameters["TC"]=TC
+    parameters["rateD"]=rateD
+    parameters["rateB"]=rateB
+    parameters["e_l"]=e_l
+    parameters["TV"]=-TC/parameters["e_C_factor"]-1e-1
+    parameters["TH"]=np.inf
+    L,DI, init, steady = get_L_Draz_Init_Steady(parameters)
+    entropy=L_entropy_production(DI,init,get_e_ops(parameters),parameters)
+    return (entropy,rate_eff,L_efficiency(DI,init,get_e_ops(parameters),parameters))
