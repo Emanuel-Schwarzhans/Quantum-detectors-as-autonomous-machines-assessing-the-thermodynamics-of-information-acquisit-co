@@ -123,8 +123,8 @@ def L_entropy_production(DrazInv,init_state,e_ops,parameters):
     else:
         EC=parameters["e_l"]*parameters["e_C_factor"]
         Lrho=vector_to_operator(DrazInv*init_state)
-        # return(np.real(-1/TC*((e_ops[5]+EC*e_ops[2])@Lrho).tr()))
-        return(np.real((-1/TC*((e_ops[5]+EC*e_ops[2]+(parameters["e_l"]+parameters["e_s"])*e_ops[0])-1/TH*((parameters["e_l"]+EC)*e_ops[3]))@Lrho).tr())) # all currents
+        return(np.real(-1/TC*((e_ops[5]+EC*e_ops[2])@Lrho).tr())) # only cold currents
+        # return(np.real((-1/TC*((e_ops[5]+EC*e_ops[2]+(parameters["e_l"]+parameters["e_s"])*e_ops[0])-1/TH*((parameters["e_l"]+EC)*e_ops[3]))@Lrho).tr())) # all currents
         # return(np.real(-1/TC*((e_ops[5]+EC*e_ops[2]+(parameters["e_l"]+EC)*e_ops[3])@Lrho).tr())) # all currents except detection
 
 def L_entropy_steady_rate(DrazInv,init_state,e_ops,parameters):
