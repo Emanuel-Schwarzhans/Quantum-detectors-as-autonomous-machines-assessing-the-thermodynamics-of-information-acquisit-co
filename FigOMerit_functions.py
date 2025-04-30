@@ -135,8 +135,8 @@ def L_entropy_steady_rate(DrazInv,init_state,e_ops,parameters):
     else:
         e_C=parameters["e_l"]*parameters["e_C_factor"]
         steady_prev_run=init_state
-        # return(expect(e_ops[2]*e_C+e_ops[5],steady_prev_run)/TC)
-        return(expect((e_ops[2]*e_C+e_ops[5]+(parameters["e_l"]+parameters["e_s"])*e_ops[0])/TC+(parameters["e_l"]+e_C)/TH*e_ops[3],steady_prev_run)) #all currents
+        return(expect(e_ops[2]*e_C+e_ops[5],steady_prev_run)/TC) # only cold currents
+        # return(expect((e_ops[2]*e_C+e_ops[5]+(parameters["e_l"]+parameters["e_s"])*e_ops[0])/TC+(parameters["e_l"]+e_C)/TH*e_ops[3],steady_prev_run)) #all currents
         # return(expect(e_ops[2]*e_C+e_ops[5]+(parameters["e_l"]+e_C)*e_ops[3],steady_prev_run)/TC)  #all currents except detection
         # return(expect(e_ops[2]*e_C+e_ops[5]+(parameters["e_l"]+parameters["e_s"])*e_ops[0],steady_prev_run)/TC) #all currents except hot
 
