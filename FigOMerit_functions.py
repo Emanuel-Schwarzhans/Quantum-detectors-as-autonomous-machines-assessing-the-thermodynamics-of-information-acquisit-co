@@ -89,7 +89,7 @@ def get_e_ops(parameters):
                         parameters["k"])
   ### In the following [2] is the energy gap, [0] is the current going into the system and [1] is the current going out of the system
     e_ready=Qobj(tensor(identity(2),identity(2),matrix_element(parameters["k"],parameters["k"],parameters["d_l"]),identity(2)))
-    e_energy_curr_ladder_bath=-Qobj(np.sum([c_ops_L[2][i+1]* ## This is positive if the current flows from the ladder to the bath
+    e_energy_curr_ladder_bath=-Qobj(np.sum([(c_ops_L[2][i+1]-c_ops_L[2][i])* ## This is positive if the current flows from the ladder to the bath
                                (c_ops_L[0][i].dag()
                                 *c_ops_L[0][i] ## e.g. |0> <0| for the ladder-bath current
                                 -c_ops_L[1][i].dag()
