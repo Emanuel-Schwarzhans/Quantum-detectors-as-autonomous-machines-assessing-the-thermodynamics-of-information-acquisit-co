@@ -24,7 +24,7 @@ def main():
         "Td_indep_flag": False,  # Flag for independent detection channel temperature
         "Td_eq_Tb_flag": False,  # Flag for equal ladder bath and detection channel temperature
         "Max_TV_flag": False,    # Flag for maximum setting TV to the maximum value given by TV>-TC e_L/e_C= -TC/e_C_factor
-        "first_gap_flag": False,  # Flag for sampling the first gap (consumes more computational resource)
+        "first_gap_flag": True,  # Flag for sampling the first gap (consumes more computational resource)
         "epsilon": 10**(-6),        # Small number for deviation from maximum TV value, only used if Max_TV_flag is True
     }
 
@@ -36,10 +36,9 @@ def main():
     g_ml_range=[0.1,2]
     g_sl_range=[0.1,2]
     T_C_range=[0.05,0.2]
-    T_V_range=[-20,-0]
+    T_V_range=[-10,-0]
     e_C_factor_range=[0.1,2]
     rateM_range=[0.1,2]
-    parameters["first_gap_flag"]=False
 
 
     # filename="./Output/Dante_Scatter_plots_v2.csv"
@@ -61,8 +60,8 @@ def main():
                             e_C_factor_range,rateM_range,
                             parameters,
                             filename,
-                            N_loops=5,
-                            loop_size=10,
+                            N_loops=2000,
+                            loop_size=50,
                             error_cap=100)
 
 if __name__ == "__main__":
