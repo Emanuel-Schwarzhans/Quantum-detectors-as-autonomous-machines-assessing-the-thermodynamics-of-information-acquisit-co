@@ -572,11 +572,9 @@ def Parameter_plot(param_dict, param_str, param_range):
     data = pd.DataFrame()
     parameters = param_dict.copy()
 
-
-
-
     # Iterate over the range of the parameter to be varied
     for param in param_range:
+        # Value errors for inconsistent flags
         if parameters["Td_eq_Tb_flag"]== True and (parameters["Tb_indep_flag"]==False or parameters["Td_indep_flag"]==False):
             raise ValueError("Td=Tb flag raised but Tb or Td are not independent")
         elif parameters["Td_eq_Tb_flag"]== True:
@@ -617,7 +615,10 @@ def Parameter_plot(param_dict, param_str, param_range):
         # Check if the current parameter values are valid
         if (parameters["TH"] >= 0 and parameters["TV"] <= 0):
             # Concatenate the figures of merit for the current parameter values to the data DataFrame
-            data = pd.concat([data, L_get_all_figures_of_merit(DrazInv, init_state, steady_state, e_ops, parameters)])
+            if parameters["first_gap_flag"]==True:
+                data = pd.concat([data, L_get_all_figures_of_merit(DrazInv, init_state, steady_state, e_ops, parameters,L=L)])
+            else:
+                data = pd.concat([data, L_get_all_figures_of_merit(DrazInv, init_state, steady_state, e_ops, parameters)])
 
     return data
 
