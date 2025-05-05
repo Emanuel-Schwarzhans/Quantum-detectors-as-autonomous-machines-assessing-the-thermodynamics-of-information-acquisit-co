@@ -181,6 +181,9 @@ def L_first_gap(L):
     eigenen=np.array(L.eigenenergies())
     return(np.real(eigenen[-1]-eigenen[-2]))
 
+def L_dead_time(L_first_gap,epsilon):
+    return(np.real(np.log(epsilon)/L_first_gap)) # real part because the first gap should have an negeldible imaginary part
+
 
 def get_parameterlist(result):
     outstring=["mesolve(H,psi0, tlist=times,c_ops=c_ops, e_ops=e_ops)","steady_prev_run","e_ops","c_ops","t_f","t_steps","rateM","rateB","rateD","TH","TC","Tb","Td","e_s","e_C","e_l","d_l","TV","k"]
