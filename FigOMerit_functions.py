@@ -8,7 +8,7 @@ import pandas as pd
 import os
 
 
-def get_dynamics_k_new(parameters):
+def get_dynamics_k_new(parameters,init=None):
     # Total Hamiltonian
     t_f = parameters["t_f"]
     t_steps = parameters["t_steps"]
@@ -33,7 +33,11 @@ def get_dynamics_k_new(parameters):
 
 
     steady_prev_run=steadystate(H,c_ops)
-    psi0 = tensor(ptrace(steady_prev_run,[0,1,2]),matrix_element(1,1,2))
+    if init==None:
+        # Initial state
+        psi0 = tensor(ptrace(steady_prev_run,[0,1,2]),matrix_element(1,1,2))
+    else:
+        psi0=init
     times = np.linspace(0., t_f, t_steps)
 
     return([
