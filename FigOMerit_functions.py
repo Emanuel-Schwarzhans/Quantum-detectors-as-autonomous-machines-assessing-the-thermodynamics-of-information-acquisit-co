@@ -860,3 +860,27 @@ def rate_eff_entropy (TC, rateB, rateD, e_l,e_s,parameters):
     L,DI, init, steady = get_L_Draz_Init_Steady(parameters)
     entropy=L_entropy_production(DI,init,get_e_ops(parameters),parameters)
     return (entropy,rate_eff,L_efficiency(DI,init,get_e_ops(parameters),parameters))
+
+
+def FoM_repeated_measurements(parameters,n_runs,epsilon=1e-10):
+    # returns the FoM (plus t_D and n_run) for each run of repeated measurements after partial equilibration to an epsilon value
+    L,DI, init, steady = get_L_Draz_Init_Steady(parameters)
+    FoM_list=pd.DataFrame()
+    dynamics_list=[]
+    for n in range(n_runs):
+        e_ops=get_e_ops(parameters)
+        FoM=L_get_all_figures_of_merit(DI,init,steady,e_ops,parameters,L=L)
+        t_D=L_dead_time(FoM["L first gap"],epsilon)
+        FoM["n_run"] = n
+        FoM["dead_time"] = t_D
+
+        parameters["t_f"] = t_D
+        dynamics = get_dynamics_k_new(parameters,init=vector_to_operator(init))
+        dynamics_list.append(dynamics)
+        FoM_list=pd.concat([FoM_list,FoM])
+        print(t_D)
+        # Evolve the initial state to the dead time
+        tD_state = vector_to_operator(mesolve(L, init, tlist=[0, t_D], e_ops=[], options=Options(store_final_state=True)).final_state)
+        steady = tD_state # pretend the steady state is the state after the dead time
+        init=operator_to_vector(tensor(ptrace(tD_state,[0,1,2]),matrix_element(1,1,2)))
+    return(FoM_list, dynamics_list)
