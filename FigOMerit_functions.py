@@ -884,3 +884,26 @@ def FoM_repeated_measurements(parameters,n_runs,epsilon=1e-10):
         steady = tD_state # pretend the steady state is the state after the dead time
         init=operator_to_vector(tensor(ptrace(tD_state,[0,1,2]),matrix_element(1,1,2)))
     return(FoM_list, dynamics_list)
+
+
+def Noise(Lbb, steadys, JJ2, JJ):
+    N_sst=steadys.dims
+    vectsteady=operator_to_vector(steadys)
+
+    I2L = operator_to_vector(Qobj(np.identity(steady.shape[0]), dims=[N_sst[0], N_sst[0]])).trans()
+
+    # DrazInv=Qobj(scipy.linalg.pinv(Lbb.full()))
+    # Calculate the expression using NumPy operations
+    alpha=JJ@vectsteady
+    A=np.vstack((Lbb.full(),I2L.full()))
+    B=np.vstack(((alpha - vectsteady*(I2L*alpha)).full(),0))
+    z= Qobj(np.linalg.lstsq(A,B,rcond=None)[0],dims=operator_to_vector(steadys).dims)
+    K=I2L*JJ2*vectsteady
+    result = K-2*I2L*JJ*z
+    return np.real(result)
+
+def make_current_super_operator(L_list,nu_list):
+    S_op = Qobj(np.zeros((L_list[0].shape[0]**2, L_list[0].shape[1]**2)), dims=[L_list[0].dims, L_list[0].dims])
+    for L, nu in zip(L_list, nu_list):
+        S_op += sprepost(L, L.dag()) * nu
+    return S_op
