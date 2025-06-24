@@ -8,7 +8,7 @@ import pandas as pd
 import os
 
 
-def get_dynamics_k_new(parameters,init=None):
+def get_dynamics_k_new(parameters,init=None,e_ops=None):
     # Total Hamiltonian
     t_f = parameters["t_f"]
     t_steps = parameters["t_steps"]
@@ -28,7 +28,9 @@ def get_dynamics_k_new(parameters,init=None):
     ### --- e_ops:######################################
     # index     0                   1                   2               3               4                   5
     # operator  detect current      ladder-bath-curr    cold-m curr     hot-m curr      ready-state pop     energy-curr ladder-bath
-    e_ops=get_e_ops(parameters)
+    if e_ops==None:
+        e_ops=get_e_ops(parameters)
+
     ####################################################
 
 
@@ -382,15 +384,20 @@ def generate_dataset_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(sample_set,filename_sa
 
         l=liouvillian(H,c_ops)
 
-        drinv=pseudo_inverse(l,method="spsolve")
+        try:
+            drinv = pseudo_inverse(l, method="spsolve")
+            steady = steadystate(H, c_ops)
+            init = operator_to_vector(tensor(ptrace(steady, [0, 1, 2]), matrix_element(1, 1, 2)))
 
-        steady=steadystate(H,c_ops)
-        init=operator_to_vector(tensor(ptrace(steady,[0,1,2]),matrix_element(1,1,2)))
+            if parameters["first_gap_flag"] == True:
+                FOM_vals = L_get_all_figures_of_merit(drinv, init, steady, e_ops, parameters, L=l)  # Evaluate function
+            else:
+                FOM_vals = L_get_all_figures_of_merit(drinv, init, steady, e_ops, parameters)  # Evaluate function
 
-        if parameters["first_gap_flag"]==True:
-            FOM_vals = L_get_all_figures_of_merit(drinv,init,steady,e_ops,parameters,L=l)  # Evaluate function
-        else:
-            FOM_vals = L_get_all_figures_of_merit(drinv,init,steady,e_ops,parameters)  # Evaluate function
+        except (ValueError, RuntimeError, np.linalg.LinAlgError) as e:
+            print(f"Error encountered: {type(e).__name__}: {e}")
+            print(f"Parameters causing the error:TC: {parameters['TC']},TV: {parameters['TV']},g_ml: {parameters['g_ml']},g_sl: {parameters['g_sl']},rateD: {parameters['rateD']},e_C_factor: {parameters['e_C_factor']},rateM: {parameters['rateM']}")
+            continue
         FOM_LHC_sampling=pd.concat([FOM_LHC_sampling, FOM_vals])
 
     FOM_LHC_sampling.reset_index(drop=True, inplace=True)
@@ -584,7 +591,7 @@ def get_FoM_vari_one_parameter(param_dict,param_str,param_range): # exception: e
 
 def Parameter_plot(param_dict, param_str, param_range):
     # Check if the parameter to be varied is a basic parameter
-    if param_str not in ["TC", "TV", "g_ml", "rateD", "e_C_factor", "e_max", "e_s","Tb","Td"]:
+    if param_str not in ["TC", "TV", "g_ml","g_sl", "rateD", "e_C_factor", "e_max", "e_s","Tb","Td"]:
         raise ValueError("param_str not basic parameter")
 
     data = pd.DataFrame()
@@ -623,9 +630,13 @@ def Parameter_plot(param_dict, param_str, param_range):
 
         # Calculate e_l and e_C based on the current parameter values
         parameters["e_l"] = (parameters["e_max"] - parameters["e_s"]) / (parameters["d_l"] - 2)
-        parameters["e_C"] = parameters["e_l"] * parameters["e_C_factor"]
+        if parameters["e_C_independent_flag"] == False:
+            parameters["e_C"] = parameters["e_l"] * parameters["e_C_factor"]
         # Calculate TH based on the current parameter values
-        parameters["TH"] = TH_from_TV_TC(parameters["TV"], parameters["TC"], parameters["e_C"], parameters["e_l"])
+        if parameters["TC"]==0:
+            parameters["TH"] = np.inf
+        else:
+            parameters["TH"] = TH_from_TV_TC(parameters["TV"], parameters["TC"], parameters["e_C"], parameters["e_l"])
         # Get the Liouvillian, Drazin inverse, initial state, and steady state
         L, DrazInv, init_state, steady_state = get_L_Draz_Init_Steady(parameters)
         # Get the expectation operators
@@ -860,7 +871,12 @@ def reduce_list_to_real_values(list, epsilon=1e-10):
 
 def rate_eff_entropy (TC, rateB, rateD, e_l,e_s,parameters):
     # returns the entropy production, efficiency hyptothesis only using coupling rates (wrong), actual efficiency
-    rate_eff=1/(1+rateB/rateD*(1+np.exp(-e_s/TC)/(1-np.exp(-(e_l+e_s)/TC))))
+    # rate_eff=1/(1+rateB/rateD*(1+np.exp(-e_s/TC)/(1-np.exp(-(e_l+e_s)/TC))))
+    # rate_eff=1/(1+rateB/rateD*(1+np.exp(-e_s/TC))/(1+np.exp(-(e_l+e_s)/TC)))
+    ZD=1+np.exp(-(e_s+e_l)/TC)
+    ZB=1+np.exp(-(e_s)/TC)
+    # rate_eff=(rateD/ZD)/(rateD/ZD+rateB/ZB)
+    rate_eff=rateD/(rateD+rateB*ZB/ZD)
 
     parameters["TC"]=TC
     parameters["rateD"]=rateD
@@ -869,8 +885,10 @@ def rate_eff_entropy (TC, rateB, rateD, e_l,e_s,parameters):
     parameters["TV"]=-TC/parameters["e_C_factor"]-1e-1
     parameters["TH"]=np.inf
     L,DI, init, steady = get_L_Draz_Init_Steady(parameters)
+    first_gap=L_first_gap(L)
     entropy=L_entropy_production(DI,init,get_e_ops(parameters),parameters)
-    return (entropy,rate_eff,L_efficiency(DI,init,get_e_ops(parameters),parameters))
+    entropy_rate=L_entropy_steady_rate(DI,steady,get_e_ops(parameters),parameters)
+    return (entropy,entropy_rate,rate_eff,L_efficiency(DI,init,get_e_ops(parameters),parameters),first_gap)
 
 
 def FoM_repeated_measurements(parameters,n_runs,epsilon=1e-10):
@@ -901,7 +919,7 @@ def Noise(Lbb, steadys, JJ2, JJ):
     N_sst=steadys.dims
     vectsteady=operator_to_vector(steadys)
 
-    I2L = operator_to_vector(Qobj(np.identity(steady.shape[0]), dims=[N_sst[0], N_sst[0]])).trans()
+    I2L = operator_to_vector(Qobj(np.identity(steadys.shape[0]), dims=[N_sst[0], N_sst[0]])).trans()
 
     # DrazInv=Qobj(scipy.linalg.pinv(Lbb.full()))
     # Calculate the expression using NumPy operations
