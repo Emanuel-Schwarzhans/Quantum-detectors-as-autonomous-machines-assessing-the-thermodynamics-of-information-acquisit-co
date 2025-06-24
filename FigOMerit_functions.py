@@ -200,16 +200,27 @@ def L_get_all_figures_of_merit(DrazInv,init_state,steady_state,e_ops,parameters,
     ent=L_entropy_production(DrazInv,init_state,e_ops,parameters)
     ent_rate=L_entropy_steady_rate(DrazInv,steady_state,e_ops,parameters)
     if L != None:
-        first_gap=L_first_gap(L)
+        first_gap=L_first_gap(L) #calculating the first gap
+        if (parameters["noise_flag"]==True):
+            #calculating the noise
+            c_ops=get_c_ops(parameters)
+            JJ=make_current_super_operator([c_ops[0],c_ops[1]],[-1,1])
+            JJ2=make_current_super_operator([c_ops[0],c_ops[1]],[1,1])
+            ss_noise=Noise(L,steady_state,JJ2,JJ)
+        else:
+            ss_noise=None
     else:
         first_gap=None
+        ss_noise=None
+
     output={"efficiency":effic,
             "dark count rate":darc,
             "jitter":jitt,
             "entropy production":ent,
             "entropy rate":ent_rate,
             "machine_efficiency":machine_efficiency(parameters),
-            "L first gap":first_gap
+            "L first gap":first_gap,
+            "ss noise": ss_noise
     }
     output.update(parameters)
     output_df=pd.DataFrame([output])
