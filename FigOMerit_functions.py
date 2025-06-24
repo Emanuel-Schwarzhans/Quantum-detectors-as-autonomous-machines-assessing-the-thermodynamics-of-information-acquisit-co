@@ -317,7 +317,7 @@ def generate_sample_set_TC_TV_g_ml_g_sl_rateD_eCfactor_rateM(T_C_range,T_V_range
     #implementing sampling constraint for temperature
     T_C = scaled_samples[:, 0]
     T_V = scaled_samples[:, 1]
-    e_C_factor=scaled_samples[:,4]
+    e_C_factor=scaled_samples[:,5]
     d_l=parameters["d_l"]
     e_l=(parameters["e_max"]-parameters["e_s"])/(d_l-2)
     e_C=e_C_factor*e_l
