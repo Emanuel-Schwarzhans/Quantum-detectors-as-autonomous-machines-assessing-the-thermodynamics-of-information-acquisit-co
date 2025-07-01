@@ -1,0 +1,19 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  Quantum detectors as autonomous machines -- assessing the
+  thermodynamics of information acquisition - Code
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Emanuel
+    family-names: Schwarzhans
+    name-particle: Dr.
+    email: emanuel.schwarzhans@um.edu.mt
+    affiliation: University of Malta
+    orcid: 'https://orcid.org/0000-0001-8259-9720'
+license: CC-BY-4.0
