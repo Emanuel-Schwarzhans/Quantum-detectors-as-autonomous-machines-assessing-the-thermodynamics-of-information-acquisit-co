@@ -1,3 +1,5 @@
+# Quantum detectors as autonomous machines – assessing the thermodynamics of information acquisition - Code
+ 
 This is the code that was used to produce the results in "Quantum detectors as autonomous machines: assessing the nonequilibrium
 thermodynamics of information acquisition"
 
