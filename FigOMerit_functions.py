@@ -155,11 +155,11 @@ def L_jitter(DrazInv,init_state,e_ops,parameters):
     L3rho=vector_to_operator(DrazInv@DrazInv@DrazInv@init_state)
     L2rho=vector_to_operator(DrazInv@DrazInv@init_state)
     Lrho=vector_to_operator(DrazInv@init_state)
-    normalize=(e_ops_current@Lrho).tr()
+    normalize=(e_ops_current@Lrho).tr() # This is the efficiency but not negative, so its - \eta_D
 
     expt2=(2*e_ops_current/normalize*L3rho).tr()
     expt=(e_ops_current/normalize*L2rho).tr()
-    jitter=np.sqrt((expt2-expt**2))
+    jitter=np.sqrt((expt2-expt**2)) # The proper definition has a minus in front of the first term, but this is not needed here because we are normalizing by the -eta_D
 
     return(np.real(jitter))
 
