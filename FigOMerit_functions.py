@@ -68,6 +68,78 @@ def get_dynamics_k_new(parameters,init=None,e_ops=None):
         parameters["k"],            #19
         H])                         #20
 
+def get_trajectory_k_new(parameters,init=None,e_ops=None,ntraj=1):
+    # Total Hamiltonian
+    t_f = parameters["t_f"]
+    t_steps = parameters["t_steps"]
+
+    parameters["TH"]=TH_from_TV_TC(parameters["TV"],
+                                        parameters["TC"],
+                                        parameters["e_l"]*parameters["e_C_factor"],
+                                        parameters["e_l"])
+
+
+    H=H_k_params(parameters)
+    # H=H0_k(e_s,e_l,e_C,d_l,k)+HI_k(g_sl,g_ml,d_l,k)
+
+    # Jump operators
+    # c_ops=c_ops_k(rateM,rateB,rateD,TH,TC,Tb,Td,e_s,e_C,e_l,d_l,k)
+    c_ops=get_c_ops(parameters)
+    ### --- e_ops:######################################
+    # index     0                   1                   2               3               4                   5
+    # operator  detect current      ladder-bath-curr    cold-m curr     hot-m curr      ready-state pop     energy-curr ladder-bath
+    if e_ops==None:
+        e_ops=get_e_ops(parameters)
+
+    ####################################################
+    steady_prev_run=steadystate(H,c_ops)
+    rho0 = tensor(ptrace(steady_prev_run,[0,1,2]),matrix_element(1,1,2))
+    # Create list with eigenvalues and eigenvectors of rho0
+    eigenvals, eigenvecs = rho0.eigenstates()
+
+    # Randomly select an eigenvector with probability given by eigenvalues
+    probabilities = np.real(eigenvals) / np.sum(np.real(eigenvals))
+    selected_index = np.random.choice(len(eigenvals), p=probabilities)
+
+
+    if init==None:
+        # Initial state randomly selected from steady state
+        psi0 = eigenvecs[selected_index]
+
+    else:
+        psi0=init
+
+
+    times = np.linspace(0., t_f, t_steps)
+
+    mcsolved=mcsolve(H, psi0, tlist=times, c_ops=c_ops, e_ops=e_ops, ntraj=ntraj, progress_bar=None,options={"keep_runs_results": True})
+
+    return([
+        mcsolved,                   #0
+        steady_prev_run,            #1
+        e_ops,                      #2
+        c_ops,                      #3
+        parameters["t_f"],          #4
+        parameters["t_steps"],      #5
+        parameters["rateM"],        #6
+        parameters["rateB"],        #7
+        parameters["rateD"],        #8
+        parameters["TH"],           #9
+        parameters["TC"],           #10
+        parameters["Tb"],           #11
+        parameters["Td"],           #12
+        parameters["e_s"],          #13
+        parameters["e_C"],          #14
+        parameters["e_l"],          #15
+        parameters["g_sl"],         #16
+        parameters["g_ml"],         #17
+        parameters["d_l"],          #18
+        parameters["k"],            #19
+        H,                          #20
+        psi0                        #21
+        ])
+
+
 
 ####get_e_ops returns exp operators####
 def get_e_ops(parameters):
